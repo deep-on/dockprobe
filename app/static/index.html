@@ -302,6 +302,7 @@ function renderAlertLog(alerts) {
 // ── Chart highlight system (unified, smooth) ──
 let _activeChart = null;
 let _activeIdx = -1;
+let _activeSrc = ''; // 'legend' or 'chart'
 let _animFrame = null;
 // Per-chart animation state: Map<Chart, Float32Array of lerp values per dataset>
 const _chartAnim = new WeakMap();
@@ -314,14 +315,14 @@ function _parseHex(hex) {
   return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
 }
 
-function _setActive(chart, idx) {
-  if (_activeIdx === idx && _activeChart === chart) return;
-  _activeIdx = idx; _activeChart = chart;
+function _setActive(chart, idx, src) {
+  if (_activeIdx === idx && _activeChart === chart && _activeSrc === src) return;
+  _activeIdx = idx; _activeChart = chart; _activeSrc = src;
   _startAnim();
 }
 function _clearActive(chart) {
   if (_activeChart !== chart) return;
-  _activeIdx = -1; _activeChart = null;
+  _activeIdx = -1; _activeChart = null; _activeSrc = '';
   chart.canvas.style.cursor = 'default';
   _startAnim();
 }
@@ -386,61 +387,25 @@ function _findNearestDs(chart, ex, ey) {
   return idx;
 }
 
-// Find legend item at position
-function _findLegendItem(chart, ex, ey) {
-  const boxes = chart.legend?.legendHitBoxes;
-  if (!boxes || !boxes.length) return -1;
-  // Direct hit with generous padding
-  for (let i = 0; i < boxes.length; i++) {
-    const b = boxes[i]; if (!b) continue;
-    if (ex >= b.left - 12 && ex <= b.left + b.width + 12 &&
-        ey >= b.top - 6 && ey <= b.top + b.height + 6) return i;
-  }
-  // Fallback: closest item on same row within legend zone
-  const top = Math.min(...boxes.map(b => b.top));
-  const bot = Math.max(...boxes.map(b => b.top + b.height));
-  if (ey < top - 8 || ey > bot + 8) return -1;
-  let best = Infinity, idx = -1;
-  for (let i = 0; i < boxes.length; i++) {
-    const b = boxes[i]; if (!b) continue;
-    if (Math.abs(ey - (b.top + b.height / 2)) > b.height * 0.8) continue;
-    const d = Math.abs(ex - (b.left + b.width / 2));
-    if (d < best) { best = d; idx = i; }
-  }
-  return idx;
-}
-
-// Unified plugin: handles legend hover, glow drawing, legend underline
+// Glow + chart-area hover plugin (legend hover handled by native callbacks)
 const highlightPlugin = {
   id: 'highlight',
   beforeEvent(chart, args) {
     const evt = args.event;
     if (evt.type === 'mouseout') { _clearActive(chart); return; }
     if (evt.type !== 'mousemove') return;
+    if (_activeSrc === 'legend') return; // legend hover takes priority
     const area = chart.chartArea;
     if (!area) return;
-
-    // 1) Check legend area first
-    const li = _findLegendItem(chart, evt.x, evt.y);
-    if (li >= 0) {
-      chart.canvas.style.cursor = 'pointer';
-      _setActive(chart, li);
-      args.changed = false; // prevent Chart.js default legend handling
-      return;
-    }
-
-    // 2) Check chart area
     if (evt.x >= area.left && evt.x <= area.right && evt.y >= area.top && evt.y <= area.bottom) {
       const di = _findNearestDs(chart, evt.x, evt.y);
       if (di >= 0) {
         chart.canvas.style.cursor = 'crosshair';
-        _setActive(chart, di);
+        _setActive(chart, di, 'chart');
       }
-      return;
+    } else if (_activeSrc === 'chart') {
+      _clearActive(chart);
     }
-
-    // 3) Outside both → clear
-    _clearActive(chart);
   },
   beforeDatasetDraw(chart, args) {
     const ds = chart.data.datasets[args.index];
@@ -454,26 +419,6 @@ const highlightPlugin = {
   afterDatasetDraw(chart, args) {
     const ds = chart.data.datasets[args.index];
     if (ds && ds._glow > 0.02) chart.ctx.restore();
-  },
-  afterDraw(chart) {
-    const legend = chart.legend;
-    if (!legend) return;
-    const ctx = chart.ctx;
-    const boxes = legend.legendHitBoxes || [];
-    chart.data.datasets.forEach((ds, i) => {
-      const box = boxes[i];
-      if (!box || !ds) return;
-      // Fade underline on highlighted item
-      const gv = ds._glow || 0;
-      if (gv > 0.01) {
-        const [r, g, b] = _parseHex(ds._origColor || ds.borderColor);
-        const tw = ctx.measureText(ds.label || '').width;
-        ctx.save();
-        ctx.fillStyle = `rgba(${r},${g},${b},${gv * 0.65})`;
-        ctx.fillRect(box.left, box.top + box.height + 1, tw + 16, 2);
-        ctx.restore();
-      }
-    });
   }
 };
 
@@ -488,7 +433,18 @@ function initCharts() {
     interaction: { mode: 'index', intersect: false },
     scales: scaleOpts,
     plugins: {
-      legend: { labels: { color: '#c9d1d9', font: { size: 11 }, boxWidth: 12 }, onClick: () => {} },
+      legend: {
+        labels: { color: '#c9d1d9', font: { size: 11 }, boxWidth: 12 },
+        onClick: () => {},
+        onHover(evt, item, legend) {
+          const idx = item.datasetIndex;
+          legend.chart.canvas.style.cursor = 'pointer';
+          _setActive(legend.chart, idx, 'legend');
+        },
+        onLeave(evt, item, legend) {
+          if (_activeSrc === 'legend') _clearActive(legend.chart);
+        }
+      },
       tooltip: {
         mode: 'index', intersect: false,
         filter(item) {
