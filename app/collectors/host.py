@@ -13,6 +13,7 @@ def collect_host_stats() -> dict[str, Any]:
         "gpu_temp": _gpu_temp(),
         "disk": _disk_usage(),
         "load_avg": _load_avg(),
+        "cpu_cores": os.cpu_count() or 1,
         "ts": time.time(),
     }
 

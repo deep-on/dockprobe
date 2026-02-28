@@ -380,6 +380,40 @@ async def api_update_settings(request: Request):
     return JSONResponse({"ok": True, "settings": updated})
 
 
+# ── GitHub repo stats (cached 10 min) ──
+_gh_cache: dict[str, Any] = {"data": None, "ts": 0}
+GH_REPO = "deep-on/dockwatch"
+GH_CACHE_TTL = 600
+
+
+@app.get("/api/github-stats")
+async def api_github_stats():
+    import httpx as _httpx
+
+    now = time.time()
+    if _gh_cache["data"] and now - _gh_cache["ts"] < GH_CACHE_TTL:
+        return JSONResponse(_gh_cache["data"])
+    try:
+        async with _httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(f"https://api.github.com/repos/{GH_REPO}")
+            if resp.status_code == 200:
+                d = resp.json()
+                data = {
+                    "stars": d.get("stargazers_count", 0),
+                    "forks": d.get("forks_count", 0),
+                    "watchers": d.get("subscribers_count", 0),
+                    "open_issues": d.get("open_issues_count", 0),
+                    "repo": GH_REPO,
+                    "url": d.get("html_url", ""),
+                }
+                _gh_cache["data"] = data
+                _gh_cache["ts"] = now
+                return JSONResponse(data)
+    except Exception as e:
+        logger.warning("GitHub stats fetch failed: %s", e)
+    return JSONResponse(_gh_cache["data"] or {"stars": 0, "forks": 0, "watchers": 0, "open_issues": 0, "repo": GH_REPO, "url": ""})
+
+
 @app.get("/api/health")
 async def api_health():
     return {"status": "ok", "uptime_cycles": _latest.get("ts", 0)}
