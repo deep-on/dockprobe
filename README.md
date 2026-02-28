@@ -1,5 +1,7 @@
 # 🐳 DockWatch
 
+🌐 [한국어](README.ko.md) | **English**
+
 **Lightweight Docker container monitoring dashboard with anomaly detection & Telegram alerts.**
 
 One container. One command. Full visibility.
