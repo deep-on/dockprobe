@@ -18,6 +18,7 @@ services:
       - CPU_THRESHOLD=${CPU_THRESHOLD:-80}
       - AUTH_USER=${AUTH_USER}
       - AUTH_PASS=${AUTH_PASS}
+      - MAX_CONNECTIONS=${MAX_CONNECTIONS:-3}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,ssl; c=ssl._create_unverified_context(); urllib.request.urlopen('https://localhost:9090/api/health',context=c) if __import__('os').path.exists('/certs/cert.pem') else urllib.request.urlopen('http://localhost:9090/api/health')"]
       interval: 30s

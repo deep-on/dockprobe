@@ -4,6 +4,7 @@ TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
 AUTH_USER: str = os.getenv("AUTH_USER", "")
 AUTH_PASS: str = os.getenv("AUTH_PASS", "")
+MAX_CONNECTIONS: int = int(os.getenv("MAX_CONNECTIONS", "3"))
 DB_PATH: str = os.getenv("DB_PATH", "/data/monitor.db")
 COLLECT_INTERVAL: int = int(os.getenv("COLLECT_INTERVAL", "10"))
 RETENTION_DAYS: int = 7

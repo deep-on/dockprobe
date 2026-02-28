@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Docker Monitor</title>
+<title>DockWatch</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d1117'/><text x='50' y='68' font-size='60' text-anchor='middle' fill='%2358a6ff'>🐳</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -55,6 +56,36 @@ tr:hover td{background:#1c212944}
 .status-exited{background:var(--red)}
 .status-paused{background:var(--yellow)}
 .status-other{background:var(--text2)}
+.header-right{display:flex;align-items:center;gap:12px}
+.btn-icon{background:none;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:13px}
+.btn-icon:hover{color:var(--accent);border-color:var(--accent)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;justify-content:center;align-items:center}
+.modal-overlay.active{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;width:360px;max-width:90vw}
+.modal h3{margin-bottom:16px;font-size:16px}
+.modal label{display:block;color:var(--text2);font-size:12px;margin-bottom:4px;margin-top:12px}
+.modal input{width:100%;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;outline:none}
+.modal input:focus{border-color:var(--accent)}
+.modal-actions{display:flex;gap:8px;margin-top:20px;justify-content:flex-end}
+.btn{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{opacity:.9}
+.btn-cancel{background:var(--border);color:var(--text)}
+.btn-cancel:hover{background:#444}
+.modal .msg{margin-top:12px;font-size:13px;padding:8px;border-radius:4px;display:none}
+.modal .msg.error{display:block;background:#f8514922;color:var(--red)}
+.modal .msg.ok{display:block;background:#3fb95022;color:var(--green)}
+.session-bar{display:flex;align-items:center;gap:16px;padding:8px 16px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--text2)}
+.session-bar .user-badge{color:var(--accent);font-weight:600;font-size:13px}
+.session-bar .conn-badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.conn-ok{background:#3fb95022;color:var(--green)}
+.conn-warn{background:#d2992222;color:var(--yellow)}
+.conn-full{background:#f8514922;color:var(--red)}
+.session-bar .ip-info{margin-left:auto}
+footer{text-align:center;padding:24px 0 12px;border-top:1px solid var(--border);margin-top:24px;color:var(--text2);font-size:12px}
+footer a{color:var(--accent);text-decoration:none}
+footer a:hover{text-decoration:underline}
+footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
 @media(max-width:768px){
   .charts{grid-template-columns:1fr}
   .cards{grid-template-columns:repeat(2,1fr)}
@@ -66,9 +97,38 @@ tr:hover td{background:#1c212944}
 <body>
 <div class="container">
   <header>
-    <h1><span>Docker</span> Monitor</h1>
-    <div id="lastUpdate">Loading...</div>
+    <h1><span>Dock</span>Watch</h1>
+    <div class="header-right">
+      <div id="lastUpdate">Loading...</div>
+      <button class="btn-icon" onclick="openPwModal()" title="Change Password">&#9881;</button>
+    </div>
   </header>
+
+  <div class="modal-overlay" id="pwModal">
+    <div class="modal">
+      <h3>Change Password</h3>
+      <label>Current Password</label>
+      <input type="password" id="pwCurrent" autocomplete="current-password">
+      <label>New Username (optional)</label>
+      <input type="text" id="pwNewUser" placeholder="Leave empty to keep current">
+      <label>New Password</label>
+      <input type="password" id="pwNew" autocomplete="new-password">
+      <label>Confirm New Password</label>
+      <input type="password" id="pwConfirm" autocomplete="new-password">
+      <div class="msg" id="pwMsg"></div>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closePwModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitPwChange()">Change</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="session-bar" id="sessionBar">
+    <span>User: <span class="user-badge" id="sessionUser">-</span></span>
+    <span>IP: <span id="sessionIp">-</span></span>
+    <span class="conn-badge conn-ok" id="connBadge">- / -</span>
+    <span class="ip-info" id="activeIps"></span>
+  </div>
 
   <div id="alertBanner" class="alert-banner">
     <h3>⚠ Anomaly Detected</h3>
@@ -116,6 +176,12 @@ tr:hover td{background:#1c212944}
       <tbody id="alertBody"></tbody></table>
     </div>
   </div>
+
+  <footer>
+    <div class="logo-text">DockWatch</div>
+    <div>Powered by <a href="https://github.com/deep-on" target="_blank">DeepOn Inc.</a> &middot; <a href="https://github.com/deep-on/dockwatch" target="_blank">GitHub</a> &middot; MIT License</div>
+    <div style="margin-top:4px;font-size:11px;color:var(--border)">Modifications must retain "Powered by DeepOn Inc." attribution.</div>
+  </footer>
 </div>
 
 <script>
@@ -317,13 +383,28 @@ document.querySelectorAll('#containerTable th').forEach(th => {
   });
 });
 
+function renderSession(s) {
+  if (!s) return;
+  document.getElementById('sessionUser').textContent = s.user || '-';
+  document.getElementById('sessionIp').textContent = s.ip || '-';
+  const badge = document.getElementById('connBadge');
+  const cnt = s.active_connections || 0;
+  const max = s.max_connections || 0;
+  badge.textContent = max > 0 ? `${cnt} / ${max}` : `${cnt}`;
+  badge.className = 'conn-badge ' + (max <= 0 ? 'conn-ok' : cnt >= max ? 'conn-full' : cnt >= max - 1 ? 'conn-warn' : 'conn-ok');
+  const ips = (s.active_ips || []).filter(ip => ip !== s.ip);
+  document.getElementById('activeIps').textContent = ips.length ? 'Others: ' + ips.join(', ') : '';
+}
+
 async function refresh() {
   try {
-    const [cur, alerts] = await Promise.all([
+    const [cur, alerts, session] = await Promise.all([
       fetch('/api/current').then(r => r.json()),
-      fetch('/api/alerts?hours=24').then(r => r.json())
+      fetch('/api/alerts?hours=24').then(r => r.json()),
+      fetch('/api/session').then(r => r.json())
     ]);
     document.getElementById('lastUpdate').textContent = 'Updated: ' + fmtTime(Date.now() / 1000);
+    renderSession(session);
     renderHostCards(cur.host || {});
     window._lastContainers = cur.containers;
     renderContainers(cur.containers || []);
@@ -333,6 +414,57 @@ async function refresh() {
     updateCharts(cur.containers, cur.host);
   } catch (e) {
     document.getElementById('lastUpdate').textContent = 'Error: ' + e.message;
+  }
+}
+
+function openPwModal() {
+  document.getElementById('pwModal').classList.add('active');
+  document.getElementById('pwCurrent').value = '';
+  document.getElementById('pwNewUser').value = '';
+  document.getElementById('pwNew').value = '';
+  document.getElementById('pwConfirm').value = '';
+  const msg = document.getElementById('pwMsg');
+  msg.className = 'msg'; msg.textContent = '';
+  document.getElementById('pwCurrent').focus();
+}
+
+function closePwModal() {
+  document.getElementById('pwModal').classList.remove('active');
+}
+
+document.getElementById('pwModal').addEventListener('click', function(e) {
+  if (e.target === this) closePwModal();
+});
+
+async function submitPwChange() {
+  const msg = document.getElementById('pwMsg');
+  const curPw = document.getElementById('pwCurrent').value;
+  const newUser = document.getElementById('pwNewUser').value.trim();
+  const newPw = document.getElementById('pwNew').value;
+  const confirmPw = document.getElementById('pwConfirm').value;
+
+  if (!newPw) { msg.className = 'msg error'; msg.textContent = 'New password is required.'; return; }
+  if (newPw !== confirmPw) { msg.className = 'msg error'; msg.textContent = 'Passwords do not match.'; return; }
+  if (newPw.length < 4) { msg.className = 'msg error'; msg.textContent = 'Password must be at least 4 characters.'; return; }
+
+  try {
+    const resp = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_password: curPw, new_username: newUser, new_password: newPw })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      msg.className = 'msg ok';
+      msg.textContent = 'Password changed. Reloading...';
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      msg.className = 'msg error';
+      msg.textContent = data.error || 'Failed to change password.';
+    }
+  } catch (e) {
+    msg.className = 'msg error';
+    msg.textContent = 'Network error: ' + e.message;
   }
 }
 

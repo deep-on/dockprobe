@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any
 
 import base64
+import hashlib
+import json
 import secrets
 from collections import defaultdict
 
@@ -107,10 +109,67 @@ app = FastAPI(title="Docker Monitor", lifespan=lifespan)
 STATIC_DIR = Path(__file__).parent / "static"
 
 
-# Rate limiting: {ip: [fail_timestamp, ...]}
+# ── Auth credentials (file-based, falls back to env) ──
+
+AUTH_FILE = Path(config.DB_PATH).parent / "auth.json"
+
+
+def _hash_pw(pw: str) -> str:
+    return hashlib.sha256(pw.encode()).hexdigest()
+
+
+def _load_auth() -> tuple[str, str]:
+    """Load credentials: auth.json first, then env vars."""
+    if AUTH_FILE.exists():
+        try:
+            data = json.loads(AUTH_FILE.read_text())
+            return data["user"], data["hash"]
+        except Exception:
+            pass
+    if config.AUTH_USER and config.AUTH_PASS:
+        return config.AUTH_USER, _hash_pw(config.AUTH_PASS)
+    return "", ""
+
+
+def _save_auth(user: str, pw: str) -> None:
+    AUTH_FILE.write_text(json.dumps({"user": user, "hash": _hash_pw(pw)}))
+
+
+# ── Active sessions: {ip: last_seen_timestamp} ──
+
+_active_sessions: dict[str, float] = {}
+SESSION_TIMEOUT = 60  # consider inactive after 60s
+
+
+def _touch_session(ip: str) -> None:
+    _active_sessions[ip] = time.time()
+
+
+def _get_active_count() -> int:
+    now = time.time()
+    return sum(1 for t in _active_sessions.values() if now - t < SESSION_TIMEOUT)
+
+
+def _get_active_ips() -> list[str]:
+    now = time.time()
+    return [ip for ip, t in _active_sessions.items() if now - t < SESSION_TIMEOUT]
+
+
+def _is_connection_allowed(ip: str) -> bool:
+    if config.MAX_CONNECTIONS <= 0:
+        return True
+    # Already active — always allowed
+    now = time.time()
+    if ip in _active_sessions and now - _active_sessions[ip] < SESSION_TIMEOUT:
+        return True
+    return _get_active_count() < config.MAX_CONNECTIONS
+
+
+# ── Rate limiting ──
+
 _fail_log: dict[str, list[float]] = defaultdict(list)
 RATE_MAX_FAILS = 5
-RATE_WINDOW = 60  # seconds
+RATE_WINDOW = 60
 
 
 def _get_client_ip(request: Request) -> str:
@@ -122,7 +181,6 @@ def _get_client_ip(request: Request) -> str:
 
 def _is_rate_limited(ip: str) -> bool:
     now = time.time()
-    # Purge old entries
     _fail_log[ip] = [t for t in _fail_log[ip] if now - t < RATE_WINDOW]
     return len(_fail_log[ip]) >= RATE_MAX_FAILS
 
@@ -133,7 +191,8 @@ def _record_fail(ip: str) -> None:
 
 def _check_auth(request: Request) -> Response | None:
     """Validate Basic Auth with rate limiting."""
-    if not config.AUTH_USER or not config.AUTH_PASS:
+    auth_user, auth_hash = _load_auth()
+    if not auth_user or not auth_hash:
         return None
 
     ip = _get_client_ip(request)
@@ -147,7 +206,7 @@ def _check_auth(request: Request) -> Response | None:
         try:
             decoded = base64.b64decode(auth[6:]).decode()
             user, pw = decoded.split(":", 1)
-            if secrets.compare_digest(user, config.AUTH_USER) and secrets.compare_digest(pw, config.AUTH_PASS):
+            if secrets.compare_digest(user, auth_user) and secrets.compare_digest(_hash_pw(pw), auth_hash):
                 return None
         except Exception:
             pass
@@ -162,6 +221,18 @@ def _check_auth(request: Request) -> Response | None:
     )
 
 
+def _get_current_user(request: Request) -> str | None:
+    """Extract username from valid Basic Auth header."""
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Basic "):
+        try:
+            decoded = base64.b64decode(auth[6:]).decode()
+            return decoded.split(":", 1)[0]
+        except Exception:
+            pass
+    return None
+
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     if request.url.path == "/api/health":
@@ -169,6 +240,12 @@ async def auth_middleware(request: Request, call_next):
     resp = _check_auth(request)
     if resp is not None:
         return resp
+    # Connection limit check (after auth passes)
+    ip = _get_client_ip(request)
+    if not _is_connection_allowed(ip):
+        logger.warning("Max connections reached, rejected: %s", ip)
+        return Response(status_code=503, content="Max connections reached. Try again later.")
+    _touch_session(ip)
     return await call_next(request)
 
 
@@ -198,6 +275,47 @@ async def api_host_history(hours: float = Query(1, ge=0.1, le=168)):
 async def api_alerts(hours: float = Query(24, ge=1, le=168)):
     data = get_alerts(hours)
     return JSONResponse(data)
+
+
+@app.post("/api/change-password")
+async def api_change_password(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Invalid JSON"}, status_code=400)
+
+    current_pw = body.get("current_password", "")
+    new_user = body.get("new_username", "").strip()
+    new_pw = body.get("new_password", "")
+
+    if not new_pw or len(new_pw) < 4:
+        return JSONResponse({"ok": False, "error": "New password must be at least 4 characters"}, status_code=400)
+
+    auth_user, auth_hash = _load_auth()
+    if auth_user and auth_hash:
+        if not secrets.compare_digest(_hash_pw(current_pw), auth_hash):
+            return JSONResponse({"ok": False, "error": "Current password is incorrect"}, status_code=403)
+
+    username = new_user if new_user else (auth_user or "admin")
+    _save_auth(username, new_pw)
+    logger.info("Password changed for user: %s", username)
+    return JSONResponse({"ok": True, "message": "Password changed. Please re-login."})
+
+
+@app.get("/api/session")
+async def api_session(request: Request):
+    ip = _get_client_ip(request)
+    user = _get_current_user(request) or "anonymous"
+    ua = request.headers.get("User-Agent", "")
+    active_ips = _get_active_ips()
+    return JSONResponse({
+        "user": user,
+        "ip": ip,
+        "user_agent": ua,
+        "active_connections": len(active_ips),
+        "max_connections": config.MAX_CONNECTIONS,
+        "active_ips": active_ips,
+    })
 
 
 @app.get("/api/health")
