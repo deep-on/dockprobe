@@ -112,6 +112,27 @@ STATIC_DIR = Path(__file__).parent / "static"
 # ── Auth credentials (file-based, falls back to env) ──
 
 AUTH_FILE = Path(config.DB_PATH).parent / "auth.json"
+SETTINGS_FILE = Path(config.DB_PATH).parent / "settings.json"
+
+
+def _load_settings() -> dict:
+    if SETTINGS_FILE.exists():
+        try:
+            return json.loads(SETTINGS_FILE.read_text())
+        except Exception:
+            pass
+    return {}
+
+
+def _save_settings(data: dict) -> None:
+    current = _load_settings()
+    current.update(data)
+    SETTINGS_FILE.write_text(json.dumps(current))
+
+
+def _get_max_connections() -> int:
+    s = _load_settings()
+    return s.get("max_connections", config.MAX_CONNECTIONS)
 
 
 def _hash_pw(pw: str) -> str:
@@ -156,13 +177,14 @@ def _get_active_ips() -> list[str]:
 
 
 def _is_connection_allowed(ip: str) -> bool:
-    if config.MAX_CONNECTIONS <= 0:
+    max_conn = _get_max_connections()
+    if max_conn <= 0:
         return True
     # Already active — always allowed
     now = time.time()
     if ip in _active_sessions and now - _active_sessions[ip] < SESSION_TIMEOUT:
         return True
-    return _get_active_count() < config.MAX_CONNECTIONS
+    return _get_active_count() < max_conn
 
 
 # ── Rate limiting ──
@@ -313,9 +335,41 @@ async def api_session(request: Request):
         "ip": ip,
         "user_agent": ua,
         "active_connections": len(active_ips),
-        "max_connections": config.MAX_CONNECTIONS,
+        "max_connections": _get_max_connections(),
         "active_ips": active_ips,
     })
+
+
+@app.get("/api/settings")
+async def api_get_settings():
+    return JSONResponse({
+        "max_connections": _get_max_connections(),
+    })
+
+
+@app.post("/api/settings")
+async def api_update_settings(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Invalid JSON"}, status_code=400)
+
+    updated = {}
+    if "max_connections" in body:
+        try:
+            val = int(body["max_connections"])
+            if val < 0 or val > 100:
+                return JSONResponse({"ok": False, "error": "max_connections must be 0-100 (0=unlimited)"}, status_code=400)
+            updated["max_connections"] = val
+        except (ValueError, TypeError):
+            return JSONResponse({"ok": False, "error": "max_connections must be a number"}, status_code=400)
+
+    if not updated:
+        return JSONResponse({"ok": False, "error": "No valid settings provided"}, status_code=400)
+
+    _save_settings(updated)
+    logger.info("Settings updated: %s", updated)
+    return JSONResponse({"ok": True, "settings": updated})
 
 
 @app.get("/api/health")

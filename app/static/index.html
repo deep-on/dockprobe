@@ -100,7 +100,8 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
     <h1><span>Dock</span>Watch</h1>
     <div class="header-right">
       <div id="lastUpdate">Loading...</div>
-      <button class="btn-icon" onclick="openPwModal()" title="Change Password">&#9881;</button>
+      <button class="btn-icon" onclick="openSettingsModal()" title="Settings">&#9881;</button>
+      <button class="btn-icon" onclick="openPwModal()" title="Change Password">&#128274;</button>
     </div>
   </header>
 
@@ -123,10 +124,23 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
     </div>
   </div>
 
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <h3>Settings</h3>
+      <label>Max Connections <span style="font-size:11px;color:var(--text2)">(0 = unlimited)</span></label>
+      <input type="number" id="setMaxConn" min="0" max="100" value="3">
+      <div class="msg" id="settingsMsg"></div>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closeSettingsModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <div class="session-bar" id="sessionBar">
     <span>User: <span class="user-badge" id="sessionUser">-</span></span>
     <span>IP: <span id="sessionIp">-</span></span>
-    <span class="conn-badge conn-ok" id="connBadge">- / -</span>
+    <span class="conn-badge conn-ok" id="connBadge" style="cursor:pointer" onclick="openSettingsModal()" title="Click to change max connections">- / -</span>
     <span class="ip-info" id="activeIps"></span>
   </div>
 
@@ -461,6 +475,51 @@ async function submitPwChange() {
     } else {
       msg.className = 'msg error';
       msg.textContent = data.error || 'Failed to change password.';
+    }
+  } catch (e) {
+    msg.className = 'msg error';
+    msg.textContent = 'Network error: ' + e.message;
+  }
+}
+
+function openSettingsModal() {
+  document.getElementById('settingsModal').classList.add('active');
+  const msg = document.getElementById('settingsMsg');
+  msg.className = 'msg'; msg.textContent = '';
+  fetch('/api/settings').then(r => r.json()).then(data => {
+    document.getElementById('setMaxConn').value = data.max_connections || 0;
+  });
+  document.getElementById('setMaxConn').focus();
+}
+
+function closeSettingsModal() {
+  document.getElementById('settingsModal').classList.remove('active');
+}
+
+document.getElementById('settingsModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSettingsModal();
+});
+
+async function submitSettings() {
+  const msg = document.getElementById('settingsMsg');
+  const maxConn = parseInt(document.getElementById('setMaxConn').value, 10);
+  if (isNaN(maxConn) || maxConn < 0 || maxConn > 100) {
+    msg.className = 'msg error'; msg.textContent = 'Value must be 0-100 (0=unlimited)'; return;
+  }
+  try {
+    const resp = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ max_connections: maxConn })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      msg.className = 'msg ok';
+      msg.textContent = 'Settings saved.';
+      setTimeout(() => closeSettingsModal(), 1000);
+    } else {
+      msg.className = 'msg error';
+      msg.textContent = data.error || 'Failed to save settings.';
     }
   } catch (e) {
     msg.className = 'msg error';
