@@ -1,0 +1,40 @@
+services:
+  monitor:
+    build: .
+    container_name: docker-monitor
+    restart: unless-stopped
+    ports:
+      - "${MONITOR_PORT:-9090}:9090"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys:/host_sys:ro
+      - /proc:/host_proc:ro
+      - /:/host_root:ro
+      - monitor_data:/data
+      - ./certs:/certs:ro
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - CPU_THRESHOLD=${CPU_THRESHOLD:-80}
+      - AUTH_USER=${AUTH_USER}
+      - AUTH_PASS=${AUTH_PASS}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,ssl; c=ssl._create_unverified_context(); urllib.request.urlopen('https://localhost:9090/api/health',context=c) if __import__('os').path.exists('/certs/cert.pem') else urllib.request.urlopen('http://localhost:9090/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: docker-monitor-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
+    depends_on:
+      - monitor
+    profiles:
+      - tunnel
+
+volumes:
+  monitor_data:

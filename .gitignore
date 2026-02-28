@@ -1,0 +1,6 @@
+.env
+certs/
+__pycache__/
+*.pyc
+certbot/
+*.db

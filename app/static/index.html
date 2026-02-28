@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Docker Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#c9d1d9;--text2:#8b949e;--accent:#58a6ff;--red:#f85149;--green:#3fb950;--yellow:#d29922;--orange:#db6d28}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5}
+.container{max-width:1400px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--border);margin-bottom:16px}
+header h1{font-size:20px;font-weight:600}
+header h1 span{color:var(--accent)}
+#lastUpdate{color:var(--text2);font-size:12px}
+.alert-banner{background:#f8514922;border:1px solid var(--red);border-radius:8px;padding:12px 16px;margin-bottom:16px;display:none}
+.alert-banner.active{display:block}
+.alert-banner h3{color:var(--red);margin-bottom:4px;font-size:14px}
+.alert-banner ul{list-style:none;padding:0}
+.alert-banner li{color:var(--red);font-size:13px;padding:2px 0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px}
+.card .label{color:var(--text2);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.card .value{font-size:24px;font-weight:600;margin-top:4px}
+.card .sub{color:var(--text2);font-size:12px;margin-top:2px}
+.section{margin-bottom:24px}
+.section h2{font-size:16px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap}
+th{background:#1c2129;color:var(--text2);font-weight:600;cursor:pointer;user-select:none}
+th:hover{color:var(--accent)}
+th.sorted-asc::after{content:" ▲";color:var(--accent)}
+th.sorted-desc::after{content:" ▼";color:var(--accent)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#1c212944}
+.bar-cell{position:relative;min-width:100px}
+.bar-bg{position:absolute;left:0;top:0;height:100%;opacity:.15;border-radius:2px}
+.bar-text{position:relative;z-index:1}
+.cpu-high{color:var(--red);font-weight:600}
+.mem-high{color:var(--orange);font-weight:600}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.chart-box{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px}
+.chart-box h3{font-size:13px;color:var(--text2);margin-bottom:8px}
+.chart-box canvas{width:100%!important;height:200px!important}
+.disk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.disk-item{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.disk-item .size{font-size:20px;font-weight:600;color:var(--accent)}
+.disk-item .dlabel{color:var(--text2);font-size:12px;margin-top:4px}
+.alert-log{max-height:300px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:8px}
+.alert-log table{margin:0;border:none}
+.alert-log td{font-size:12px}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.status-running{background:var(--green)}
+.status-exited{background:var(--red)}
+.status-paused{background:var(--yellow)}
+.status-other{background:var(--text2)}
+@media(max-width:768px){
+  .charts{grid-template-columns:1fr}
+  .cards{grid-template-columns:repeat(2,1fr)}
+  table{font-size:12px}
+  th,td{padding:6px 8px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1><span>Docker</span> Monitor</h1>
+    <div id="lastUpdate">Loading...</div>
+  </header>
+
+  <div id="alertBanner" class="alert-banner">
+    <h3>⚠ Anomaly Detected</h3>
+    <ul id="alertList"></ul>
+  </div>
+
+  <div class="cards" id="hostCards"></div>
+
+  <div class="section">
+    <h2>Containers</h2>
+    <div style="overflow-x:auto">
+      <table id="containerTable">
+        <thead><tr>
+          <th data-col="name">Name</th>
+          <th data-col="status">Status</th>
+          <th data-col="cpu_pct" data-type="num">CPU %</th>
+          <th data-col="mem_pct" data-type="num">Memory</th>
+          <th data-col="net_rx" data-type="num">Net RX</th>
+          <th data-col="net_tx" data-type="num">Net TX</th>
+          <th data-col="blk_read" data-type="num">Blk Read</th>
+          <th data-col="blk_write" data-type="num">Blk Write</th>
+          <th data-col="restart_count" data-type="num">Restarts</th>
+        </tr></thead>
+        <tbody id="containerBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-box"><h3>Container CPU %</h3><canvas id="chartCpu"></canvas></div>
+    <div class="chart-box"><h3>Container Memory %</h3><canvas id="chartMem"></canvas></div>
+    <div class="chart-box"><h3>Host Temperature</h3><canvas id="chartTemp"></canvas></div>
+    <div class="chart-box"><h3>Host Load Average</h3><canvas id="chartLoad"></canvas></div>
+  </div>
+
+  <div class="section">
+    <h2>Docker Disk Usage</h2>
+    <div class="disk-grid" id="diskGrid"></div>
+  </div>
+
+  <div class="section">
+    <h2>Alert History (24h)</h2>
+    <div class="alert-log" id="alertLog">
+      <table><thead><tr><th>Time</th><th>Type</th><th>Target</th><th>Message</th></tr></thead>
+      <tbody id="alertBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = ['#58a6ff','#3fb950','#d29922','#f85149','#db6d28','#bc8cff','#f778ba','#79c0ff','#56d364','#e3b341','#ff7b72','#d2a8ff','#ffa657','#7ee787','#a5d6ff'];
+let sortCol = 'cpu_pct', sortDir = -1;
+let charts = {};
+
+function fmt(b) {
+  if (b == null) return '-';
+  const u = ['B','KB','MB','GB','TB'];
+  let i = 0;
+  let v = b;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return v.toFixed(i > 0 ? 1 : 0) + ' ' + u[i];
+}
+
+function fmtPct(v) { return v != null ? v.toFixed(1) + '%' : '-'; }
+function fmtTime(ts) { return new Date(ts * 1000).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function fmtDateTime(ts) { return new Date(ts * 1000).toLocaleString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+
+function statusDot(s) {
+  const cls = s === 'running' ? 'running' : s === 'exited' ? 'exited' : s === 'paused' ? 'paused' : 'other';
+  return `<span class="status-dot status-${cls}"></span>${s}`;
+}
+
+function barCell(pct, color) {
+  return `<td class="bar-cell"><div class="bar-bg" style="width:${Math.min(pct,100)}%;background:${color}"></div><span class="bar-text">${fmtPct(pct)}</span></td>`;
+}
+
+function renderHostCards(host) {
+  const el = document.getElementById('hostCards');
+  if (!host || !host.ts) { el.innerHTML = '<div class="card"><div class="label">Status</div><div class="value">-</div></div>'; return; }
+  const disk = (host.disk && host.disk[0]) || {};
+  const load = host.load_avg || [0,0,0];
+  el.innerHTML = `
+    <div class="card"><div class="label">CPU Temp</div><div class="value" style="color:${host.cpu_temp > 85 ? 'var(--red)' : host.cpu_temp > 70 ? 'var(--yellow)' : 'var(--green)'}">${host.cpu_temp != null ? host.cpu_temp + '°C' : 'N/A'}</div></div>
+    <div class="card"><div class="label">GPU Temp</div><div class="value" style="color:${host.gpu_temp > 85 ? 'var(--red)' : host.gpu_temp > 70 ? 'var(--yellow)' : 'var(--green)'}">${host.gpu_temp != null ? host.gpu_temp + '°C' : 'N/A'}</div></div>
+    <div class="card"><div class="label">Disk /</div><div class="value" style="color:${disk.pct > 90 ? 'var(--red)' : disk.pct > 80 ? 'var(--yellow)' : 'var(--text)'}">${disk.pct != null ? disk.pct + '%' : 'N/A'}</div><div class="sub">${fmt(disk.used)} / ${fmt(disk.total)}</div></div>
+    <div class="card"><div class="label">Load Avg</div><div class="value">${load[0].toFixed(2)}</div><div class="sub">${load[1].toFixed(2)} / ${load[2].toFixed(2)}</div></div>
+  `;
+}
+
+function renderContainers(containers) {
+  const tbody = document.getElementById('containerBody');
+  if (!containers || !containers.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text2)">No containers</td></tr>'; return; }
+
+  const sorted = [...containers].sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (typeof va === 'string') return sortDir * va.localeCompare(vb);
+    return sortDir * ((va || 0) - (vb || 0));
+  });
+
+  tbody.innerHTML = sorted.map(c => {
+    const cpuCls = c.cpu_pct > 80 ? ' cpu-high' : '';
+    const memCls = c.mem_pct > 90 ? ' mem-high' : '';
+    return `<tr>
+      <td><b>${c.name}</b></td>
+      <td>${statusDot(c.status)}</td>
+      <td class="bar-cell${cpuCls}"><div class="bar-bg" style="width:${Math.min(c.cpu_pct,100)}%;background:var(--accent)"></div><span class="bar-text">${c.cpu_pct.toFixed(1)}%</span></td>
+      <td class="bar-cell${memCls}"><div class="bar-bg" style="width:${Math.min(c.mem_pct,100)}%;background:var(--green)"></div><span class="bar-text">${c.mem_pct.toFixed(1)}% (${fmt(c.mem_usage)})</span></td>
+      <td>${fmt(c.net_rx)}</td>
+      <td>${fmt(c.net_tx)}</td>
+      <td>${fmt(c.blk_read)}</td>
+      <td>${fmt(c.blk_write)}</td>
+      <td>${c.restart_count}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAnomalies(anomalies) {
+  const banner = document.getElementById('alertBanner');
+  const list = document.getElementById('alertList');
+  if (!anomalies || !anomalies.length) { banner.classList.remove('active'); return; }
+  banner.classList.add('active');
+  list.innerHTML = anomalies.map(a => `<li>• ${a.msg}</li>`).join('');
+}
+
+function renderDisk(images) {
+  const el = document.getElementById('diskGrid');
+  if (!images || !images.image_size) { el.innerHTML = '<div class="disk-item"><div class="dlabel">No data</div></div>'; return; }
+  el.innerHTML = `
+    <div class="disk-item"><div class="size">${fmt(images.image_size)}</div><div class="dlabel">Images (${images.image_count})</div></div>
+    <div class="disk-item"><div class="size">${fmt(images.cache_size)}</div><div class="dlabel">Build Cache</div></div>
+    <div class="disk-item"><div class="size">${fmt(images.volume_size)}</div><div class="dlabel">Volumes (${images.volume_count})</div></div>
+    <div class="disk-item"><div class="size">${fmt(images.container_rw_size)}</div><div class="dlabel">Container RW</div></div>
+  `;
+}
+
+function renderAlertLog(alerts) {
+  const tbody = document.getElementById('alertBody');
+  if (!alerts || !alerts.length) { tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text2)">No recent alerts</td></tr>'; return; }
+  tbody.innerHTML = alerts.map(a =>
+    `<tr><td>${fmtDateTime(a.ts)}</td><td>${a.type}</td><td>${a.target}</td><td>${a.msg}</td></tr>`
+  ).join('');
+}
+
+function initCharts() {
+  const commonOpts = {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    scales: {
+      x: { display: true, ticks: { color: '#8b949e', maxTicksLimit: 6, font: { size: 10 } }, grid: { color: '#30363d33' } },
+      y: { ticks: { color: '#8b949e', font: { size: 10 } }, grid: { color: '#30363d33' } }
+    },
+    plugins: { legend: { labels: { color: '#c9d1d9', font: { size: 11 }, boxWidth: 12 } } }
+  };
+
+  charts.cpu = new Chart(document.getElementById('chartCpu'), {
+    type: 'line', data: { labels: [], datasets: [] },
+    options: { ...commonOpts, scales: { ...commonOpts.scales, y: { ...commonOpts.scales.y, min: 0, suggestedMax: 100 } } }
+  });
+  charts.mem = new Chart(document.getElementById('chartMem'), {
+    type: 'line', data: { labels: [], datasets: [] },
+    options: { ...commonOpts, scales: { ...commonOpts.scales, y: { ...commonOpts.scales.y, min: 0, suggestedMax: 100 } } }
+  });
+  charts.temp = new Chart(document.getElementById('chartTemp'), {
+    type: 'line', data: { labels: [], datasets: [] },
+    options: { ...commonOpts, scales: { ...commonOpts.scales, y: { ...commonOpts.scales.y, min: 0 } } }
+  });
+  charts.load = new Chart(document.getElementById('chartLoad'), {
+    type: 'line', data: { labels: [], datasets: [] },
+    options: commonOpts
+  });
+}
+
+// Accumulate chart data points client-side (last 60 points = ~10 min at 10s)
+const MAX_POINTS = 60;
+let chartData = { cpu: {}, mem: {}, temp: { cpu: [], gpu: [] }, load: { l1: [], l5: [], l15: [] }, labels: [] };
+
+function updateCharts(containers, host) {
+  if (!containers) return;
+  const now = fmtTime(Date.now() / 1000);
+  chartData.labels.push(now);
+  if (chartData.labels.length > MAX_POINTS) chartData.labels.shift();
+
+  for (const c of containers) {
+    if (!chartData.cpu[c.name]) { chartData.cpu[c.name] = []; chartData.mem[c.name] = []; }
+    chartData.cpu[c.name].push(c.cpu_pct);
+    chartData.mem[c.name].push(c.mem_pct);
+    if (chartData.cpu[c.name].length > MAX_POINTS) { chartData.cpu[c.name].shift(); chartData.mem[c.name].shift(); }
+  }
+
+  if (host) {
+    chartData.temp.cpu.push(host.cpu_temp);
+    chartData.temp.gpu.push(host.gpu_temp);
+    const load = host.load_avg || [0,0,0];
+    chartData.load.l1.push(load[0]);
+    chartData.load.l5.push(load[1]);
+    chartData.load.l15.push(load[2]);
+    if (chartData.temp.cpu.length > MAX_POINTS) {
+      chartData.temp.cpu.shift(); chartData.temp.gpu.shift();
+      chartData.load.l1.shift(); chartData.load.l5.shift(); chartData.load.l15.shift();
+    }
+  }
+
+  // CPU chart
+  const names = Object.keys(chartData.cpu);
+  charts.cpu.data.labels = [...chartData.labels];
+  charts.cpu.data.datasets = names.map((n, i) => ({
+    label: n, data: [...chartData.cpu[n]], borderColor: COLORS[i % COLORS.length],
+    borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: false
+  }));
+  charts.cpu.update('none');
+
+  // Memory chart
+  charts.mem.data.labels = [...chartData.labels];
+  charts.mem.data.datasets = names.map((n, i) => ({
+    label: n, data: [...chartData.mem[n]], borderColor: COLORS[i % COLORS.length],
+    borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: false
+  }));
+  charts.mem.update('none');
+
+  // Temperature chart
+  charts.temp.data.labels = [...chartData.labels];
+  charts.temp.data.datasets = [
+    { label: 'CPU', data: [...chartData.temp.cpu], borderColor: '#f85149', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+    { label: 'GPU', data: [...chartData.temp.gpu], borderColor: '#d29922', borderWidth: 2, pointRadius: 0, tension: 0.3 }
+  ];
+  charts.temp.update('none');
+
+  // Load chart
+  charts.load.data.labels = [...chartData.labels];
+  charts.load.data.datasets = [
+    { label: '1m', data: [...chartData.load.l1], borderColor: '#58a6ff', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+    { label: '5m', data: [...chartData.load.l5], borderColor: '#3fb950', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+    { label: '15m', data: [...chartData.load.l15], borderColor: '#d29922', borderWidth: 2, pointRadius: 0, tension: 0.3 }
+  ];
+  charts.load.update('none');
+}
+
+// Table sorting
+document.querySelectorAll('#containerTable th').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) sortDir *= -1;
+    else { sortCol = col; sortDir = th.dataset.type === 'num' ? -1 : 1; }
+    document.querySelectorAll('#containerTable th').forEach(h => h.classList.remove('sorted-asc','sorted-desc'));
+    th.classList.add(sortDir === 1 ? 'sorted-asc' : 'sorted-desc');
+    if (window._lastContainers) renderContainers(window._lastContainers);
+  });
+});
+
+async function refresh() {
+  try {
+    const [cur, alerts] = await Promise.all([
+      fetch('/api/current').then(r => r.json()),
+      fetch('/api/alerts?hours=24').then(r => r.json())
+    ]);
+    document.getElementById('lastUpdate').textContent = 'Updated: ' + fmtTime(Date.now() / 1000);
+    renderHostCards(cur.host || {});
+    window._lastContainers = cur.containers;
+    renderContainers(cur.containers || []);
+    renderAnomalies(cur.anomalies || []);
+    renderDisk(cur.images || {});
+    renderAlertLog(alerts || []);
+    updateCharts(cur.containers, cur.host);
+  } catch (e) {
+    document.getElementById('lastUpdate').textContent = 'Error: ' + e.message;
+  }
+}
+
+initCharts();
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>
