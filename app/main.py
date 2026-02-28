@@ -276,6 +276,14 @@ async def dashboard():
     return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
 
 
+@app.get("/static/{filename}")
+async def static_file(filename: str):
+    path = STATIC_DIR / filename
+    if path.exists() and path.is_file():
+        return FileResponse(path)
+    return Response(status_code=404)
+
+
 @app.get("/api/current")
 async def api_current():
     return JSONResponse(_latest or {"containers": [], "host": {}, "images": {}, "anomalies": []})

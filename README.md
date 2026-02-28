@@ -1,48 +1,69 @@
-# 🐳 DockWatch
+<p align="center">
+  <img src="app/static/logo.png" width="80" alt="DockWatch">
+</p>
 
-🌐 [한국어](README.ko.md) | **English**
+<h1 align="center">DockWatch</h1>
 
-**Lightweight Docker container monitoring dashboard with anomaly detection & Telegram alerts.**
+<p align="center">
+  <b>Lightweight Docker monitoring dashboard with anomaly detection & Telegram alerts.</b><br>
+  One container. One command. Full visibility.
+</p>
 
-One container. One command. Full visibility.
+<p align="center">
+  <a href="README.ko.md">한국어</a> | <b>English</b>
+</p>
 
-![License](https://img.shields.io/badge/license-MIT-blue)
-![Python](https://img.shields.io/badge/python-3.12-green)
-![Docker](https://img.shields.io/badge/docker-compose-blue)
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/python-3.12-green" alt="Python">
+  <img src="https://img.shields.io/badge/docker-compose-blue" alt="Docker">
+  <img src="https://img.shields.io/badge/dependencies-4_only-brightgreen" alt="Deps">
+</p>
+
+---
+
+## Quick Start
+
+```bash
+git clone https://github.com/deep-on/dockwatch.git && cd dockwatch && bash install.sh
+```
+
+That's it. The interactive installer sets up authentication, Telegram alerts, and HTTPS — then opens `https://localhost:9090`.
+
+> **Requirements:** Docker (with Compose v2), Git, OpenSSL
 
 ---
 
 ## Features
 
-- **Real-time dashboard** — Dark-themed web UI with auto-refresh (10s)
-- **Container monitoring** — CPU, memory, network I/O, block I/O, restart count
-- **Host monitoring** — CPU/GPU temperature, disk usage, load average
-- **Anomaly detection** — Configurable rules with state machine (CPU spike, memory overflow, disk full, network spike, container restart)
-- **Telegram alerts** — Instant notifications with 30-min cooldown per alert type
-- **Rate-limited auth** — Basic Auth + brute-force protection (5 attempts / 60s lockout)
-- **HTTPS** — Self-signed SSL or Cloudflare Tunnel (zero port-forwarding)
-- **SQLite time-series** — 7-day retention, lightweight, no external DB needed
-- **One-liner install** — Interactive setup script, works in seconds
+| Category | What you get |
+|----------|-------------|
+| **Real-time Dashboard** | Dark-themed web UI, 10s auto-refresh, sortable tables, Chart.js charts |
+| **Container Monitoring** | CPU %, memory %, network I/O, block I/O, restart count |
+| **Host Monitoring** | CPU/GPU temperature, disk usage, load average |
+| **Anomaly Detection** | 6 rules — CPU spike, memory overflow, high temp, disk full, restart, network spike |
+| **Telegram Alerts** | Instant notification with 30-min cooldown per alert type |
+| **Security** | Basic Auth, rate limiting (5 fails = 60s lockout), HTTPS |
+| **Session Management** | Active connection tracking, configurable max connections, live IP display |
+| **Password Management** | Change username/password via dashboard UI |
+| **Settings UI** | Adjust max connections at runtime from the dashboard |
+| **Access Modes** | Self-signed SSL (default) or Cloudflare Tunnel (no port-forwarding) |
+| **Lightweight** | 4 Python packages, single HTML file, SQLite with 7-day retention |
 
-## Quick Start
-
-```bash
-git clone https://github.com/deep-on/dockwatch.git
-cd dockwatch
-bash install.sh
-```
-
-That's it. Open `https://localhost:9090` in your browser.
+---
 
 ## Dashboard
 
 | Section | Details |
 |---------|---------|
+| Session Bar | Logged-in user, IP, active connections / max limit |
 | Host Cards | CPU temp, GPU temp, disk %, load average |
 | Container Table | Sortable by CPU/memory/network, color-coded anomalies |
-| Charts | Container CPU & memory trends, host temperature & load (Chart.js) |
+| Charts (4) | Container CPU & memory trends, host temperature & load |
 | Docker Disk | Images, build cache, volumes, container RW layers |
 | Alert History | Last 24h with timestamps |
+
+---
 
 ## Anomaly Detection Rules
 
@@ -56,6 +77,8 @@ That's it. Open `https://localhost:9090` in your browser.
 | Network Spike | RX 10x surge + >100MB | Immediate alert |
 
 All thresholds are configurable via environment variables.
+
+---
 
 ## Architecture
 
@@ -72,7 +95,7 @@ All thresholds are configurable via environment variables.
 │  │   ├── detector.py    (state machine) │
 │  │   └── telegram.py    (httpx)         │
 │  ├── storage/                           │
-│  │   └── db.py          (SQLite)        │
+│  │   └── db.py          (SQLite WAL)    │
 │  └── static/                            │
 │      └── index.html     (Chart.js)      │
 │                                         │
@@ -88,61 +111,80 @@ All thresholds are configurable via environment variables.
 - `aiodocker` — Async Docker API client
 - `httpx` — Async HTTP client (Telegram API)
 
+---
+
 ## Configuration
 
 All settings via `.env` file:
 
 ```env
-# Authentication
+# Authentication (required)
 AUTH_USER=admin
 AUTH_PASS=your-password
 
-# Telegram (optional)
+# Telegram alerts (optional)
 TELEGRAM_BOT_TOKEN=your-bot-token
 TELEGRAM_CHAT_ID=your-chat-id
 
-# Thresholds (optional)
+# Thresholds (optional, shown with defaults)
 CPU_THRESHOLD=80
 MEM_THRESHOLD=90
+
+# Connection limit (optional, 0 = unlimited)
+MAX_CONNECTIONS=3
 
 # Cloudflare Tunnel (optional)
 CF_TUNNEL_TOKEN=your-tunnel-token
 ```
 
+---
+
 ## Access Modes
 
-### Local (self-signed SSL)
+### Option 1: Local (self-signed SSL) — default
+
 ```bash
-# Default mode — generates self-signed cert automatically
-bash install.sh  # choose option 1
+bash install.sh   # choose option 1
 ```
+
 Access via `https://localhost:9090` or `https://<your-ip>:9090`
 
-### Cloudflare Tunnel (no port-forwarding needed)
+### Option 2: Cloudflare Tunnel (no port-forwarding needed)
+
 ```bash
-# Public HTTPS via Cloudflare — no router config required
-bash install.sh  # choose option 2, paste tunnel token
+bash install.sh   # choose option 2, paste tunnel token
 ```
-Access via your Cloudflare tunnel domain with real HTTPS certificate.
+
+Public HTTPS via your Cloudflare tunnel domain — no router config required.
+
+---
 
 ## API Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /` | Dashboard HTML |
-| `GET /api/current` | Latest snapshot (containers + host + images + anomalies) |
-| `GET /api/history/{name}?hours=1` | Container time-series |
-| `GET /api/history/host?hours=1` | Host time-series |
-| `GET /api/alerts?hours=24` | Alert history |
-| `GET /api/health` | Health check (no auth required) |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Dashboard HTML |
+| `/api/current` | GET | Latest snapshot (containers + host + images + anomalies) |
+| `/api/history/{name}?hours=1` | GET | Container time-series |
+| `/api/history/host?hours=1` | GET | Host time-series |
+| `/api/alerts?hours=24` | GET | Alert history |
+| `/api/session` | GET | Current user, IP, active connections |
+| `/api/settings` | GET/POST | Runtime settings (max_connections) |
+| `/api/change-password` | POST | Change username/password |
+| `/api/health` | GET | Health check (no auth required) |
+
+---
 
 ## Security
 
 - **Basic Auth** on all endpoints (except `/api/health`)
 - **Rate limiting** — 5 failed login attempts → 60s lockout per IP
 - **HTTPS** — Self-signed or Cloudflare Tunnel
+- **Connection limit** — Configurable max simultaneous users
 - **Read-only mounts** — Docker socket, /sys, /proc all mounted read-only
-- **No write access** — Dashboard is monitoring-only, no container control
+- **No write access** — Monitoring-only, no container control
+
+---
 
 ## Manual Setup
 
@@ -156,7 +198,7 @@ cd dockwatch
 cp .env.example .env
 vi .env
 
-# Generate SSL cert
+# Generate SSL cert (optional)
 mkdir -p certs
 openssl req -x509 -newkey rsa:2048 -nodes \
   -keyout certs/key.pem -out certs/cert.pem \
@@ -166,10 +208,17 @@ openssl req -x509 -newkey rsa:2048 -nodes \
 docker compose up -d --build
 ```
 
+---
+
 ## License
 
 MIT License — see [LICENSE](LICENSE)
 
+**Attribution:** Modified or redistributed versions must retain the DeepOn logo and "Powered by DeepOn Inc." notice in the UI.
+
 ---
 
-Built with 🔧 by [DeepOn Inc.](https://github.com/deep-on)
+<p align="center">
+  <img src="app/static/logo.png" width="24" alt="DeepOn">
+  Built by <a href="https://deep-on.com">DeepOn Inc.</a>
+</p>

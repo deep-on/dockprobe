@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-# Docker Container Monitoring Dashboard - One-liner Installer
-# Usage: curl -sSL https://raw.githubusercontent.com/YOUR_REPO/main/install.sh | bash
+# DockWatch - One-liner Installer
+# Usage: git clone https://github.com/deep-on/dockwatch.git && cd dockwatch && bash install.sh
 
 REPO="https://github.com/deep-on/dockwatch.git"
 DIR="$HOME/dockwatch"
@@ -16,7 +16,7 @@ NC='\033[0m'
 banner() {
   echo -e "${CYAN}${BOLD}"
   echo "  ╔═══════════════════════════════════════╗"
-  echo "  ║   Docker Container Monitor Installer  ║"
+  echo "  ║        DockWatch Installer            ║"
   echo "  ╚═══════════════════════════════════════╝"
   echo -e "${NC}"
 }

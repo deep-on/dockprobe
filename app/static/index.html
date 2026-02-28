@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DockWatch</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d1117'/><text x='50' y='68' font-size='60' text-anchor='middle' fill='%2358a6ff'>🐳</text></svg>">
+<link rel="icon" href="/static/logo.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#c9d1d9;--text2:#8b949e;--accent:#58a6ff;--red:#f85149;--green:#3fb950;--yellow:#d29922;--orange:#db6d28}
+:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#c9d1d9;--text2:#8b949e;--accent:#37d208;--accent-light:#79f753;--accent-dim:#2ba806;--red:#f85149;--green:#3fb950;--yellow:#d29922;--orange:#db6d28}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5}
 .container{max-width:1400px;margin:0 auto;padding:16px}
 header{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--border);margin-bottom:16px}
@@ -97,7 +97,7 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
 <body>
 <div class="container">
   <header>
-    <h1><span>Dock</span>Watch</h1>
+    <h1><img src="/static/logo.png" alt="DeepOn" style="height:28px;vertical-align:middle;margin-right:8px;border-radius:6px"><span>Dock</span>Watch</h1>
     <div class="header-right">
       <div id="lastUpdate">Loading...</div>
       <button class="btn-icon" onclick="openSettingsModal()" title="Settings">&#9881;</button>
@@ -192,14 +192,14 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
   </div>
 
   <footer>
-    <div class="logo-text">DockWatch</div>
-    <div>Powered by <a href="https://github.com/deep-on" target="_blank">DeepOn Inc.</a> &middot; <a href="https://github.com/deep-on/dockwatch" target="_blank">GitHub</a> &middot; MIT License</div>
-    <div style="margin-top:4px;font-size:11px;color:var(--border)">Modifications must retain "Powered by DeepOn Inc." attribution.</div>
+    <div class="logo-text"><img src="/static/logo.png" alt="DeepOn" style="height:20px;vertical-align:middle;margin-right:6px;border-radius:4px">DockWatch</div>
+    <div>Powered by <a href="https://deep-on.com" target="_blank">DeepOn Inc.</a> &middot; <a href="https://github.com/deep-on/dockwatch" target="_blank">GitHub</a> &middot; MIT License</div>
+    <div style="margin-top:4px;font-size:11px;color:var(--border)">Modifications must retain the DeepOn logo and "Powered by DeepOn Inc." attribution.</div>
   </footer>
 </div>
 
 <script>
-const COLORS = ['#58a6ff','#3fb950','#d29922','#f85149','#db6d28','#bc8cff','#f778ba','#79c0ff','#56d364','#e3b341','#ff7b72','#d2a8ff','#ffa657','#7ee787','#a5d6ff'];
+const COLORS = ['#37d208','#79f753','#58a6ff','#f85149','#d29922','#db6d28','#bc8cff','#f778ba','#79c0ff','#56d364','#e3b341','#ff7b72','#d2a8ff','#ffa657','#a5d6ff'];
 let sortCol = 'cpu_pct', sortDir = -1;
 let charts = {};
 
