@@ -299,249 +299,229 @@ function renderAlertLog(alerts) {
   ).join('');
 }
 
-// ── Chart highlight: smooth fade-in/out glow + dim ──
+// ── Chart highlight system (unified, smooth) ──
 let _activeChart = null;
 let _activeIdx = -1;
-const _dsState = new WeakMap(); // per-dataset animation state {t: 0~1}
 let _animFrame = null;
+// Per-chart animation state: Map<Chart, Float32Array of lerp values per dataset>
+const _chartAnim = new WeakMap();
 
 function _hexToRgba(hex, a) {
-  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-  return `rgba(${r},${g},${b},${a})`;
+  const rr = parseInt(hex.slice(1,3),16), gg = parseInt(hex.slice(3,5),16), bb = parseInt(hex.slice(5,7),16);
+  return `rgba(${rr},${gg},${bb},${a})`;
+}
+function _parseHex(hex) {
+  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+}
+
+function _setActive(chart, idx) {
+  if (_activeIdx === idx && _activeChart === chart) return;
+  _activeIdx = idx; _activeChart = chart;
+  _startAnim();
+}
+function _clearActive(chart) {
+  if (_activeChart !== chart) return;
+  _activeIdx = -1; _activeChart = null;
+  chart.canvas.style.cursor = 'default';
+  _startAnim();
 }
 
 function _tickHighlight() {
   let dirty = false;
   [charts.cpu, charts.mem].forEach(chart => {
     if (!chart || !chart.data) return;
+    const ds = chart.data.datasets;
+    const n = ds.length;
+    if (!n) return;
+    // Get or create lerp array for this chart
+    let arr = _chartAnim.get(chart);
+    if (!arr || arr.length !== n) { arr = new Float32Array(n); _chartAnim.set(chart, arr); }
     const target = (_activeChart === chart) ? _activeIdx : -1;
-    chart.data.datasets.forEach((ds, i) => {
-      let st = _dsState.get(ds);
-      if (!st) { st = { t: 0 }; _dsState.set(ds, st); }
-      const goal = (target >= 0 && i === target) ? 1 : 0;
-      const prev = st.t;
-      st.t += (goal - st.t) * 0.18;
-      if (Math.abs(st.t - goal) < 0.02) st.t = goal;
-      if (Math.abs(st.t - prev) > 0.005) dirty = true;
-      // Apply: highlighted → thick + glow, others → dim when something is highlighted
-      const orig = ds._origColor;
-      if (target < 0) {
-        // Nothing highlighted: all normal
-        ds.borderColor = orig;
-        ds.borderWidth = ds._origBW;
-        ds._glow = 0;
+    const hasTarget = target >= 0 && target < n;
+    for (let i = 0; i < n; i++) {
+      const goal = (hasTarget && i === target) ? 1 : 0;
+      const prev = arr[i];
+      arr[i] += (goal - arr[i]) * 0.15;
+      if (Math.abs(arr[i] - goal) < 0.01) arr[i] = goal;
+      if (Math.abs(arr[i] - prev) > 0.003) dirty = true;
+      const d = ds[i], orig = d._origColor;
+      if (!hasTarget) {
+        d.borderColor = orig; d.borderWidth = d._origBW; d._glow = 0;
       } else if (i === target) {
-        ds.borderColor = orig;
-        ds.borderWidth = ds._origBW + st.t * 2;
-        ds._glow = st.t;
+        d.borderColor = orig;
+        d.borderWidth = d._origBW + arr[i] * 1.5;
+        d._glow = arr[i];
       } else {
-        const dimAlpha = 1 - (1 - 0.18) * (1 - st.t); // lerp from 1.0 to 0.18
-        // When something is highlighted, non-highlighted lines should dim
-        const activeT = _dsState.get(chart.data.datasets[target])?.t || 0;
-        const alpha = 1 - activeT * 0.75; // dim to 25% opacity
-        ds.borderColor = _hexToRgba(orig, alpha);
-        ds.borderWidth = ds._origBW;
-        ds._glow = 0;
+        // Dim: lerp alpha from 1.0 → 0.2 based on active item's progress
+        const activeT = arr[target] || 0;
+        d.borderColor = _hexToRgba(orig, 1 - activeT * 0.7);
+        d.borderWidth = d._origBW; d._glow = 0;
       }
-    });
+    }
   });
   if (dirty) {
     if (charts.cpu) charts.cpu.draw();
     if (charts.mem) charts.mem.draw();
     _animFrame = requestAnimationFrame(_tickHighlight);
-  } else {
-    _animFrame = null;
-  }
+  } else { _animFrame = null; }
 }
-
-function startAnim() {
+function _startAnim() {
   if (!_animFrame) _animFrame = requestAnimationFrame(_tickHighlight);
 }
 
-// Legend hover handled by plugin (wider hit area), not native callbacks
+// Find nearest dataset by Y value at given X position
+function _findNearestDs(chart, ex, ey) {
+  const area = chart.chartArea;
+  if (!area) return -1;
+  const labels = chart.data.labels;
+  if (!labels.length) return -1;
+  const xIdx = Math.round((ex - area.left) / (area.right - area.left) * (labels.length - 1));
+  const ci = Math.max(0, Math.min(xIdx, labels.length - 1));
+  const mouseVal = chart.scales.y.getValueForPixel(ey);
+  let best = Infinity, idx = -1;
+  chart.data.datasets.forEach((ds, i) => {
+    const v = ds.data[ci];
+    if (v != null) { const d = Math.abs(v - mouseVal); if (d < best) { best = d; idx = i; } }
+  });
+  return idx;
+}
 
-// Glow + legend hover plugin
-const glowPlugin = {
-  id: 'glowHighlight',
+// Find legend item at position
+function _findLegendItem(chart, ex, ey) {
+  const boxes = chart.legend?.legendHitBoxes;
+  if (!boxes || !boxes.length) return -1;
+  // Direct hit with generous padding
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i]; if (!b) continue;
+    if (ex >= b.left - 12 && ex <= b.left + b.width + 12 &&
+        ey >= b.top - 6 && ey <= b.top + b.height + 6) return i;
+  }
+  // Fallback: closest item on same row within legend zone
+  const top = Math.min(...boxes.map(b => b.top));
+  const bot = Math.max(...boxes.map(b => b.top + b.height));
+  if (ey < top - 8 || ey > bot + 8) return -1;
+  let best = Infinity, idx = -1;
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i]; if (!b) continue;
+    if (Math.abs(ey - (b.top + b.height / 2)) > b.height * 0.8) continue;
+    const d = Math.abs(ex - (b.left + b.width / 2));
+    if (d < best) { best = d; idx = i; }
+  }
+  return idx;
+}
+
+// Unified plugin: handles legend hover, glow drawing, legend underline
+const highlightPlugin = {
+  id: 'highlight',
   beforeEvent(chart, args) {
     const evt = args.event;
-    const legend = chart.legend;
-    if (!legend) return;
-    if (evt.type === 'mousemove') {
-      let found = -1;
-      const boxes = legend.legendHitBoxes || [];
-      // Primary: exact hit test with padding
-      for (let i = 0; i < boxes.length; i++) {
-        const b = boxes[i];
-        if (!b) continue;
-        if (evt.x >= b.left - 10 && evt.x <= b.left + b.width + 10 &&
-            evt.y >= b.top - 8 && evt.y <= b.top + b.height + 8) {
-          found = i; break;
-        }
-      }
-      // Fallback: if mouse is in legend vertical zone, find closest item on same row
-      if (found < 0 && boxes.length > 0) {
-        const legendTop = Math.min(...boxes.map(b => b.top));
-        const legendBot = Math.max(...boxes.map(b => b.top + b.height));
-        if (evt.y >= legendTop - 10 && evt.y <= legendBot + 10) {
-          let bestDist = Infinity;
-          for (let i = 0; i < boxes.length; i++) {
-            const b = boxes[i];
-            if (!b) continue;
-            // Must be on same row (Y within box height)
-            if (Math.abs(evt.y - (b.top + b.height/2)) > b.height) continue;
-            const cx = b.left + b.width / 2;
-            const dist = Math.abs(evt.x - cx);
-            if (dist < bestDist) { bestDist = dist; found = i; }
-          }
-        }
-      }
-      if (found >= 0) {
-        if (_activeIdx !== found || _activeChart !== chart) {
-          _activeIdx = found; _activeChart = chart;
-          chart.canvas.style.cursor = 'pointer';
-          startAnim();
-        }
-        args.changed = false;
-        return;
-      }
+    if (evt.type === 'mouseout') { _clearActive(chart); return; }
+    if (evt.type !== 'mousemove') return;
+    const area = chart.chartArea;
+    if (!area) return;
+
+    // 1) Check legend area first
+    const li = _findLegendItem(chart, evt.x, evt.y);
+    if (li >= 0) {
+      chart.canvas.style.cursor = 'pointer';
+      _setActive(chart, li);
+      args.changed = false; // prevent Chart.js default legend handling
+      return;
     }
+
+    // 2) Check chart area
+    if (evt.x >= area.left && evt.x <= area.right && evt.y >= area.top && evt.y <= area.bottom) {
+      const di = _findNearestDs(chart, evt.x, evt.y);
+      if (di >= 0) {
+        chart.canvas.style.cursor = 'crosshair';
+        _setActive(chart, di);
+      }
+      return;
+    }
+
+    // 3) Outside both → clear
+    _clearActive(chart);
   },
   beforeDatasetDraw(chart, args) {
     const ds = chart.data.datasets[args.index];
     if (ds && ds._glow > 0.02) {
       chart.ctx.save();
       chart.ctx.shadowColor = ds._origColor || ds.borderColor;
-      chart.ctx.shadowBlur = ds._glow * 16;
-      chart.ctx.shadowOffsetX = 0;
-      chart.ctx.shadowOffsetY = 0;
+      chart.ctx.shadowBlur = ds._glow * 18;
+      chart.ctx.shadowOffsetX = 0; chart.ctx.shadowOffsetY = 0;
     }
   },
   afterDatasetDraw(chart, args) {
     const ds = chart.data.datasets[args.index];
-    if (ds && ds._glow > 0.02) {
-      chart.ctx.restore();
-    }
-  }
-};
-
-// ── Dynamic legend: box opacity + active highlight ──
-const dynamicLegendPlugin = {
-  id: 'dynamicLegend',
+    if (ds && ds._glow > 0.02) chart.ctx.restore();
+  },
   afterDraw(chart) {
-    if (!chart.legend) return;
+    const legend = chart.legend;
+    if (!legend) return;
     const ctx = chart.ctx;
-    const maxY = chart.scales.y ? chart.scales.y.max : 100;
-    const isActive = _activeChart === chart && _activeIdx >= 0;
-    chart.legend.legendItems.forEach((item, i) => {
-      const ds = chart.data.datasets[i];
-      if (!ds) return;
-      const box = chart.legend.legendHitBoxes[i];
-      if (!box) return;
-      const hex = ds._origColor || ds.borderColor;
-      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-
-      // Value-based opacity for color box
-      const lastVal = ds.data[ds.data.length - 1] || 0;
-      const ratio = Math.min(lastVal / (maxY || 100), 1);
-      const alpha = 0.2 + ratio * 0.8;
-      ctx.save();
-      ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-      ctx.fillRect(box.left, box.top + 2, 12, box.height - 4);
-
-      // Highlight: underline bar with fade effect (uses _glow lerp value)
-      const glowVal = ds._glow || 0;
-      if (glowVal > 0.01) {
-        const textW = ctx.measureText(ds.label || '').width;
-        ctx.fillStyle = `rgba(${r},${g},${b},${glowVal * 0.7})`;
-        ctx.fillRect(box.left, box.top + box.height + 1, textW + 16, 2);
+    const boxes = legend.legendHitBoxes || [];
+    chart.data.datasets.forEach((ds, i) => {
+      const box = boxes[i];
+      if (!box || !ds) return;
+      // Fade underline on highlighted item
+      const gv = ds._glow || 0;
+      if (gv > 0.01) {
+        const [r, g, b] = _parseHex(ds._origColor || ds.borderColor);
+        const tw = ctx.measureText(ds.label || '').width;
+        ctx.save();
+        ctx.fillStyle = `rgba(${r},${g},${b},${gv * 0.65})`;
+        ctx.fillRect(box.left, box.top + box.height + 1, tw + 16, 2);
+        ctx.restore();
       }
-      ctx.restore();
     });
   }
 };
 
 function initCharts() {
-  const legendOpts = {
-    labels: { color: '#c9d1d9', font: { size: 11 }, boxWidth: 12, usePointStyle: false },
-    onClick: () => {},  // disable click toggle
+  const scaleOpts = {
+    x: { display: true, ticks: { color: '#8b949e', maxTicksLimit: 6, font: { size: 10 } }, grid: { color: '#30363d33' } },
+    y: { ticks: { color: '#8b949e', font: { size: 10 } }, grid: { color: '#30363d33' } }
   };
 
   const commonOpts = {
     responsive: true, maintainAspectRatio: false, animation: false,
     interaction: { mode: 'index', intersect: false },
-    onHover(evt, elements, chart) {
-      const area = chart.chartArea;
-      if (!area) return;
-      // Only reset if mouse is truly below or outside the canvas, NOT above (legend area)
-      const inChart = evt.x >= area.left && evt.x <= area.right && evt.y >= area.top && evt.y <= area.bottom;
-      const inLegend = evt.y < area.top && evt.x >= area.left && evt.x <= area.right;
-      if (!inChart) {
-        // If in legend area, let onLegendHover handle it — don't reset
-        if (!inLegend && _activeChart === chart) {
-          _activeIdx = -1; _activeChart = null;
-          chart.canvas.style.cursor = 'default';
-          startAnim();
-        }
-        return;
-      }
-      const xIdx = Math.round((evt.x - area.left) / (area.right - area.left) * (chart.data.labels.length - 1));
-      const clampIdx = Math.max(0, Math.min(xIdx, chart.data.labels.length - 1));
-      const yScale = chart.scales.y;
-      const mouseVal = yScale.getValueForPixel(evt.y);
-      let bestDist = Infinity, bestDs = -1;
-      chart.data.datasets.forEach((ds, i) => {
-        const val = ds.data[clampIdx];
-        if (val != null) { const d = Math.abs(val - mouseVal); if (d < bestDist) { bestDist = d; bestDs = i; } }
-      });
-      if (bestDs >= 0 && (bestDs !== _activeIdx || _activeChart !== chart)) {
-        _activeIdx = bestDs; _activeChart = chart;
-        chart.canvas.style.cursor = 'crosshair';
-        startAnim();
-      }
-    },
-    scales: {
-      x: { display: true, ticks: { color: '#8b949e', maxTicksLimit: 6, font: { size: 10 } }, grid: { color: '#30363d33' } },
-      y: { ticks: { color: '#8b949e', font: { size: 10 } }, grid: { color: '#30363d33' } }
-    },
-    plugins: { legend: legendOpts, tooltip: {
-      mode: 'index', intersect: false,
-      filter(item) {
-        // Only show the highlighted dataset's tooltip
-        if (_activeIdx >= 0) return item.datasetIndex === _activeIdx;
-        return false;
-      },
-      callbacks: {
-        title(items) {
-          return items.length ? items[0].label : '';
+    scales: scaleOpts,
+    plugins: {
+      legend: { labels: { color: '#c9d1d9', font: { size: 11 }, boxWidth: 12 }, onClick: () => {} },
+      tooltip: {
+        mode: 'index', intersect: false,
+        filter(item) {
+          if (_activeIdx >= 0) return item.datasetIndex === _activeIdx;
+          return true; // show all when nothing highlighted
         },
-        label(ctx) {
-          const v = ctx.parsed.y;
-          return v != null ? ` ${ctx.dataset.label}: ${v.toFixed(1)}%` : '';
+        callbacks: {
+          title(items) { return items.length ? items[0].label : ''; },
+          label(ctx) { const v = ctx.parsed.y; return v != null ? ` ${ctx.dataset.label}: ${v.toFixed(1)}%` : ''; }
         }
       }
-    } }
+    }
   };
 
-  // Non-interactive opts for temp/load (few datasets, no need for highlight)
+  // Non-interactive opts for temp/load
   const simpleOpts = {
     responsive: true, maintainAspectRatio: false, animation: false,
-    scales: commonOpts.scales,
+    scales: scaleOpts,
     plugins: { legend: { labels: { color: '#c9d1d9', font: { size: 11 }, boxWidth: 12 }, onClick: () => {} },
       tooltip: { mode: 'nearest', intersect: false } }
   };
 
   charts.cpu = new Chart(document.getElementById('chartCpu'), {
-    type: 'line', data: { labels: [], datasets: [] }, plugins: [glowPlugin, dynamicLegendPlugin],
-    options: { ...commonOpts, scales: { ...commonOpts.scales, y: { ...commonOpts.scales.y, min: 0, suggestedMax: 100 } } }
+    type: 'line', data: { labels: [], datasets: [] }, plugins: [highlightPlugin],
+    options: { ...commonOpts, scales: { ...scaleOpts, y: { ...scaleOpts.y, min: 0, suggestedMax: 100 } } }
   });
   charts.mem = new Chart(document.getElementById('chartMem'), {
-    type: 'line', data: { labels: [], datasets: [] }, plugins: [glowPlugin, dynamicLegendPlugin],
-    options: { ...commonOpts, scales: { ...commonOpts.scales, y: { ...commonOpts.scales.y, min: 0, suggestedMax: 100 } } }
+    type: 'line', data: { labels: [], datasets: [] }, plugins: [highlightPlugin],
+    options: { ...commonOpts, scales: { ...scaleOpts, y: { ...scaleOpts.y, min: 0, suggestedMax: 100 } } }
   });
   charts.temp = new Chart(document.getElementById('chartTemp'), {
     type: 'line', data: { labels: [], datasets: [] },
-    options: { ...simpleOpts, scales: { ...simpleOpts.scales, y: { ...simpleOpts.scales.y, min: 0 } } }
+    options: { ...simpleOpts, scales: { ...scaleOpts, y: { ...scaleOpts.y, min: 0 } } }
   });
   charts.load = new Chart(document.getElementById('chartLoad'), {
     type: 'line', data: { labels: [], datasets: [] },
@@ -587,8 +567,8 @@ function updateCharts(containers, host) {
     return { label: n, data: [...chartData.cpu[n]], borderColor: color, _origColor: color,
       borderWidth: 1.5, _origBW: 1.5, pointRadius: 0, tension: 0.3, fill: false };
   });
-  if (_activeIdx >= 0 && _activeChart === charts.cpu) applyHighlight(charts.cpu, _activeIdx);
-  else charts.cpu.update('none');
+  charts.cpu.update('none');
+  if (_activeChart === charts.cpu) _startAnim();
 
   // Memory chart
   charts.mem.data.labels = [...chartData.labels];
@@ -597,8 +577,8 @@ function updateCharts(containers, host) {
     return { label: n, data: [...chartData.mem[n]], borderColor: color, _origColor: color,
       borderWidth: 1.5, _origBW: 1.5, pointRadius: 0, tension: 0.3, fill: false };
   });
-  if (_activeIdx >= 0 && _activeChart === charts.mem) applyHighlight(charts.mem, _activeIdx);
-  else charts.mem.update('none');
+  charts.mem.update('none');
+  if (_activeChart === charts.mem) _startAnim();
 
   // Temperature chart
   charts.temp.data.labels = [...chartData.labels];
@@ -761,14 +741,6 @@ async function submitSettings() {
 }
 
 initCharts();
-
-// Reset highlight when mouse leaves chart canvas
-['cpu','mem'].forEach(k => {
-  charts[k].canvas.addEventListener('mouseleave', () => {
-    if (_activeChart === charts[k]) { _activeIdx = -1; _activeChart = null; startAnim(); }
-    charts[k].canvas.style.cursor = 'default';
-  });
-});
 
 // ── GitHub stats with warm messages ──
 async function fetchGhStats() {
