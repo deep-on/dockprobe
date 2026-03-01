@@ -46,7 +46,7 @@ async function capture() {
   // Wait for data to populate
   await delay(5000);
 
-  // Replace sensitive content with dummy data and blur remaining
+  // Replace ALL sensitive content with dummy data
   await page.evaluate(() => {
     const dummyNames = [
       'web-frontend', 'api-server', 'postgres-db', 'redis-cache',
@@ -55,13 +55,30 @@ async function capture() {
       'elasticsearch', 'kibana', 'logstash', 'grafana-agent'
     ];
 
-    // Replace container names in table
+    // --- Container table: replace names + randomize stats ---
     document.querySelectorAll('#containerBody tr').forEach((row, i) => {
-      const nameCell = row.querySelector('td:first-child');
-      if (nameCell) nameCell.textContent = dummyNames[i] || 'service-' + (i + 1);
+      const cells = row.querySelectorAll('td');
+      if (cells[0]) cells[0].textContent = dummyNames[i] || 'service-' + (i + 1);
+      // CPU %
+      if (cells[2]) cells[2].textContent = (Math.random() * 15).toFixed(1) + '%';
+      // Memory
+      if (cells[3]) {
+        const memMB = (50 + Math.random() * 500).toFixed(1);
+        cells[3].textContent = ((memMB / 2048) * 100).toFixed(1) + '% (' + memMB + ' MB)';
+      }
+      // Net RX
+      if (cells[4]) cells[4].textContent = (Math.random() * 100).toFixed(1) + ' MB';
+      // Net TX
+      if (cells[5]) cells[5].textContent = (Math.random() * 50).toFixed(1) + ' MB';
+      // Blk Read
+      if (cells[6]) cells[6].textContent = (Math.random() * 200).toFixed(1) + ' MB';
+      // Blk Write
+      if (cells[7]) cells[7].textContent = (Math.random() * 100).toFixed(1) + ' MB';
+      // Restarts
+      if (cells[8]) cells[8].textContent = '0';
     });
 
-    // Replace session bar IP and Others
+    // --- Session bar: replace IP and Others ---
     const ipEl = document.getElementById('sessionIp');
     if (ipEl) ipEl.textContent = '192.168.1.100';
     document.querySelectorAll('.session-bar span').forEach(el => {
@@ -70,15 +87,68 @@ async function capture() {
       }
     });
 
-    // Replace alert history target and message
-    document.querySelectorAll('#alertBody tr').forEach((row, i) => {
-      const cells = row.querySelectorAll('td');
-      const name = dummyNames[i % dummyNames.length] || 'service';
-      if (cells[2]) cells[2].textContent = name;
-      if (cells[3]) cells[3].textContent = 'Container ' + name + ' CPU ' + (80 + Math.floor(Math.random() * 70)) + '.0% (>80.0% x3)';
+    // --- Host cards: replace real host data ---
+    const hostCards = document.getElementById('hostCards');
+    if (hostCards) {
+      const cards = hostCards.querySelectorAll('.card');
+      cards.forEach(card => {
+        const label = card.querySelector('.label');
+        const value = card.querySelector('.value');
+        const sub = card.querySelector('.sub');
+        if (!label || !value) return;
+        const l = label.textContent.trim();
+        if (l.includes('CPU Temp')) {
+          value.textContent = '42°C';
+          value.style.color = 'var(--green)';
+        } else if (l.includes('GPU Temp')) {
+          value.textContent = '38°C';
+          value.style.color = 'var(--green)';
+        } else if (l.includes('Disk')) {
+          value.textContent = '45%';
+          value.style.color = 'var(--text)';
+          if (sub) sub.textContent = '180.2 GB / 400.0 GB';
+        } else if (l.includes('Load')) {
+          value.innerHTML = '0.85 <span style="font-size:13px;color:var(--text2)">4%</span>';
+          if (sub) sub.textContent = '5min 0.72 / 15min 0.65';
+        }
+      });
+    }
+
+    // --- Host cards header: replace cores info ---
+    document.querySelectorAll('.card .label').forEach(el => {
+      if (el.textContent.includes('CORES')) {
+        el.textContent = el.textContent.replace(/\d+ CORES/, '8 CORES');
+      }
     });
 
-    // Replace chart legends with dummy names
+    // --- Docker Disk Usage (#diskGrid): replace real values ---
+    const diskGrid = document.getElementById('diskGrid');
+    if (diskGrid) {
+      const sizes = diskGrid.querySelectorAll('.size');
+      const labels = diskGrid.querySelectorAll('.dlabel');
+      const dummySizes = ['24.5 GB', '8.2 GB', '312.0 MB', '1.8 GB'];
+      const dummyLabels = ['Images (42)', 'Build Cache', 'Volumes (8)', 'Container RW'];
+      sizes.forEach((s, i) => { if (dummySizes[i]) s.textContent = dummySizes[i]; });
+      labels.forEach((l, i) => { if (dummyLabels[i]) l.textContent = dummyLabels[i]; });
+    }
+
+    // --- LOAD AVG label: replace CORES count ---
+    document.querySelectorAll('.label').forEach(el => {
+      if (el.textContent.includes('CORES')) {
+        el.textContent = el.textContent.replace(/\d+ CORES/, '8 CORES');
+      }
+    });
+
+    // --- Alert history: replace target and message ---
+    document.querySelectorAll('#alertBody tr').forEach((row, i) => {
+      const cells = row.querySelectorAll('td');
+      const name = dummyNames[i % dummyNames.length];
+      if (cells[0]) cells[0].textContent = 'Mar 1 ' + (10 + Math.floor(i * 0.5)) + ':' + String(10 + i * 7).padStart(2, '0') + ':00';
+      if (cells[2]) cells[2].textContent = name;
+      if (cells[3]) cells[3].textContent = 'Container ' + name + ' CPU ' + (82 + i * 3) + '.0% (>80.0% x3)';
+    });
+
+    // --- Chart legends: replace with dummy names ---
     if (typeof Chart !== 'undefined') {
       Object.values(Chart.instances || {}).forEach(chart => {
         if (chart.data && chart.data.datasets) {
@@ -89,6 +159,21 @@ async function capture() {
         }
       });
     }
+
+    // --- Connection count ---
+    document.querySelectorAll('.session-bar span').forEach(el => {
+      const match = el.textContent.match(/(\d+)\s*\/\s*(\d+)/);
+      if (match) el.textContent = '2 / 5';
+    });
+
+    // --- Updated time ---
+    document.querySelectorAll('*').forEach(el => {
+      if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
+        if (el.textContent.match(/Updated:.*\d{2}:\d{2}:\d{2}/)) {
+          el.textContent = 'Updated: 14:32:15';
+        }
+      }
+    });
   });
 
   await delay(500);
