@@ -46,6 +46,53 @@ async function capture() {
   // Wait for data to populate
   await delay(5000);
 
+  // Replace sensitive content with dummy data and blur remaining
+  await page.evaluate(() => {
+    const dummyNames = [
+      'web-frontend', 'api-server', 'postgres-db', 'redis-cache',
+      'nginx-proxy', 'worker-queue', 'mail-service', 'monitoring',
+      'auth-service', 'search-engine', 'celery-beat', 'rabbitmq',
+      'elasticsearch', 'kibana', 'logstash', 'grafana-agent'
+    ];
+
+    // Replace container names in table
+    document.querySelectorAll('#containerBody tr').forEach((row, i) => {
+      const nameCell = row.querySelector('td:first-child');
+      if (nameCell) nameCell.textContent = dummyNames[i] || 'service-' + (i + 1);
+    });
+
+    // Replace session bar IP and Others
+    const ipEl = document.getElementById('sessionIp');
+    if (ipEl) ipEl.textContent = '192.168.1.100';
+    document.querySelectorAll('.session-bar span').forEach(el => {
+      if (el.textContent.includes('Others')) {
+        el.textContent = 'Others: 192.168.1.101';
+      }
+    });
+
+    // Replace alert history target and message
+    document.querySelectorAll('#alertBody tr').forEach((row, i) => {
+      const cells = row.querySelectorAll('td');
+      const name = dummyNames[i % dummyNames.length] || 'service';
+      if (cells[2]) cells[2].textContent = name;
+      if (cells[3]) cells[3].textContent = 'Container ' + name + ' CPU ' + (80 + Math.floor(Math.random() * 70)) + '.0% (>80.0% x3)';
+    });
+
+    // Replace chart legends with dummy names
+    if (typeof Chart !== 'undefined') {
+      Object.values(Chart.instances || {}).forEach(chart => {
+        if (chart.data && chart.data.datasets) {
+          chart.data.datasets.forEach((ds, i) => {
+            ds.label = dummyNames[i] || 'service-' + (i + 1);
+          });
+          chart.update('none');
+        }
+      });
+    }
+  });
+
+  await delay(500);
+
   // 1. Full page screenshot
   console.log('Capturing dashboard-full.png ...');
   await page.screenshot({
