@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="README.ko.md">한국어</a> | <b>English</b>
+  <b>English</b> | <a href="README.ko.md">한국어</a> | <a href="README.ja.md">日本語</a> | <a href="README.de.md">Deutsch</a> | <a href="README.fr.md">Français</a> | <a href="README.es.md">Español</a> | <a href="README.pt.md">Português</a> | <a href="README.it.md">Italiano</a>
 </p>
 
 <p align="center">
@@ -31,6 +31,14 @@ git clone https://github.com/deep-on/dockwatch.git && cd dockwatch && bash insta
 That's it. The interactive installer sets up authentication, Telegram alerts, and HTTPS — then opens `https://localhost:9090`.
 
 > **Requirements:** Docker (with Compose v2), Git, OpenSSL
+
+---
+
+## Dashboard Preview
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-full.png" alt="DockWatch Dashboard" width="800">
+</p>
 
 ---
 

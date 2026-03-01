@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> | <b>한국어</b>
+  <a href="README.md">English</a> | <b>한국어</b> | <a href="README.ja.md">日本語</a> | <a href="README.de.md">Deutsch</a> | <a href="README.fr.md">Français</a> | <a href="README.es.md">Español</a> | <a href="README.pt.md">Português</a> | <a href="README.it.md">Italiano</a>
 </p>
 
 <p align="center">
@@ -31,6 +31,14 @@ git clone https://github.com/deep-on/dockwatch.git && cd dockwatch && bash insta
 끝. 대화형 설치가 인증, 텔레그램 알림, HTTPS를 자동 설정합니다. `https://localhost:9090`에 접속하세요.
 
 > **필요 조건:** Docker (Compose v2), Git, OpenSSL
+
+---
+
+## 대시보드 미리보기
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-full.png" alt="DockWatch 대시보드" width="800">
+</p>
 
 ---
 

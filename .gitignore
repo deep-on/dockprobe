@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 certbot/
 *.db
+node_modules/
