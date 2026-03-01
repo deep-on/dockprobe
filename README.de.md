@@ -28,7 +28,7 @@ DockWatch ist ein selbst gehostetes Docker-Monitoring-Dashboard, das als einzeln
 
 Wenn etwas schiefgeht, erkennt DockWatch es automatisch. Sechs integrierte Anomalieerkennungsregeln überwachen CPU-Spitzen, Speicherüberläufe, Temperaturwarnungen, Festplattenengpässe, unerwartete Neustarts und Netzwerkanstiege. Alarme werden sofort per Telegram gesendet, damit Sie reagieren können, bevor Nutzer es bemerken.
 
-Kein Agent muss auf jedem Container installiert werden, keine externe Datenbank, keine komplexe Konfiguration. Einfach den Docker-Socket einbinden, einen Befehl ausführen, und Sie haben unter `https://localhost:9090` volle Übersicht über Ihre Docker-Umgebung.
+Kein Agent muss auf jedem Container installiert werden, keine externe Datenbank, keine komplexe Konfiguration. Einfach den Docker-Socket einbinden, einen Befehl ausführen, und Sie haben unter `https://localhost:9090` volle Übersicht über Ihre Docker-Umgebung. Zugriff von außerhalb Ihres Netzwerks? Die integrierte Cloudflare-Tunnel-Unterstützung bietet sicheres öffentliches HTTPS ohne Portweiterleitung.
 
 ---
 
@@ -159,7 +159,7 @@ CF_TUNNEL_TOKEN=your-tunnel-token
 
 ## Zugriffsmodi
 
-### Option 1: Lokal (selbstsigniertes SSL) — Standard
+### Option 1: Lokales Netzwerk (selbstsigniertes SSL) — Standard
 
 ```bash
 bash install.sh   # Option 1 wählen
@@ -167,13 +167,36 @@ bash install.sh   # Option 1 wählen
 
 Zugriff über `https://localhost:9090` oder `https://<Ihre-IP>:9090`
 
-### Option 2: Cloudflare Tunnel (kein Port-Forwarding nötig)
+Für den Zugriff von anderen Geräten im selben Netzwerk verwenden Sie die LAN-IP des Servers (z.B. `https://192.168.1.100:9090`). Bei Bedarf:
+- Port in der Firewall freigeben: `sudo ufw allow 9090/tcp`
+- Selbstsignierte Zertifikatswarnung im Browser akzeptieren
+
+### Option 2: Fernzugriff per Portweiterleitung
+
+Für externen Zugriff ohne Cloudflare:
+
+1. Port 9090 im Router auf die LAN-IP des Servers weiterleiten
+2. Zugriff über `https://<öffentliche-IP>:9090`
+3. Bei wechselnder öffentlicher IP einen DDNS-Dienst (No-IP, DuckDNS etc.) verwenden
+
+> **Hinweis:** Der Port wird direkt exponiert. Basic Auth + HTTPS sind standardmäßig aktiv, aber für mehr Sicherheit wird Cloudflare Tunnel (Option 3) empfohlen.
+
+### Option 3: Cloudflare Tunnel (empfohlen für Fernzugriff)
+
+Keine Portweiterleitung, keine Firewall-Änderungen, gültiges TLS-Zertifikat — der einfachste und sicherste Weg für den Zugriff von überall.
 
 ```bash
 bash install.sh   # Option 2 wählen, Tunnel-Token eingeben
 ```
 
-Öffentlicher HTTPS-Zugang über Ihre Cloudflare-Tunnel-Domain — keine Router-Konfiguration erforderlich.
+**Einrichtung:**
+1. Kostenloses Konto bei [Cloudflare Zero Trust](https://one.dash.cloudflare.com) erstellen
+2. Zu **Networks** > **Tunnels** > **Create a tunnel** navigieren
+3. Tunnel benennen (z.B. `dockwatch`) und Tunnel-Token kopieren
+4. `bash install.sh` ausführen und Cloudflare-Tunnel-Option wählen
+5. Token eingeben
+6. Im Cloudflare-Dashboard **Public Hostname** auf `http://localhost:9090` setzen
+7. Zugriff über `https://your-domain.com` mit gültigem TLS-Zertifikat
 
 ---
 

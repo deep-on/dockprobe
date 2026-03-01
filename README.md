@@ -28,7 +28,7 @@ DockWatch is a self-hosted Docker monitoring dashboard that runs as a single con
 
 When something goes wrong, DockWatch detects it automatically. Six built-in anomaly detection rules watch for CPU spikes, memory overflows, temperature warnings, disk pressure, unexpected restarts, and network surges. Alerts are sent instantly to Telegram so you can respond before users notice.
 
-There's no agent to install on each container, no external database, no complex configuration. Just mount the Docker socket, run one command, and you have full visibility into your Docker environment at `https://localhost:9090`.
+There's no agent to install on each container, no external database, no complex configuration. Just mount the Docker socket, run one command, and you have full visibility into your Docker environment at `https://localhost:9090`. Need access from outside your network? Built-in Cloudflare Tunnel support gives you secure public HTTPS with zero port-forwarding.
 
 ---
 
@@ -159,7 +159,7 @@ CF_TUNNEL_TOKEN=your-tunnel-token
 
 ## Access Modes
 
-### Option 1: Local (self-signed SSL) — default
+### Option 1: Local Network (self-signed SSL) — default
 
 ```bash
 bash install.sh   # choose option 1
@@ -167,13 +167,36 @@ bash install.sh   # choose option 1
 
 Access via `https://localhost:9090` or `https://<your-ip>:9090`
 
-### Option 2: Cloudflare Tunnel (no port-forwarding needed)
+To access from other devices on the same network, use the server's LAN IP (e.g. `https://192.168.1.100:9090`). You may need to:
+- Allow port 9090 in the firewall: `sudo ufw allow 9090/tcp`
+- Accept the self-signed certificate warning in your browser
+
+### Option 2: Remote Access via Port Forwarding
+
+If you want to access DockWatch from outside your local network without Cloudflare:
+
+1. Forward port 9090 on your router to the server's LAN IP
+2. Access via `https://<your-public-ip>:9090`
+3. Use a dynamic DNS service (e.g. No-IP, DuckDNS) if your public IP changes
+
+> **Note:** This exposes the port directly. Basic Auth + HTTPS are enabled by default, but consider using Cloudflare Tunnel (Option 3) for better security.
+
+### Option 3: Cloudflare Tunnel (recommended for remote access)
+
+No port-forwarding, no firewall changes, proper TLS certificate — the easiest way to access DockWatch from anywhere.
 
 ```bash
 bash install.sh   # choose option 2, paste tunnel token
 ```
 
-Public HTTPS via your Cloudflare tunnel domain — no router config required.
+**Setup steps:**
+1. Create a free account at [Cloudflare Zero Trust](https://one.dash.cloudflare.com)
+2. Go to **Networks** > **Tunnels** > **Create a tunnel**
+3. Name your tunnel (e.g. `dockwatch`) and copy the tunnel token
+4. Run `bash install.sh` and choose the Cloudflare Tunnel option
+5. Paste the token when prompted
+6. In the Cloudflare dashboard, add a **Public Hostname** pointing to `http://localhost:9090`
+7. Access via `https://your-domain.com` with a valid TLS certificate
 
 ---
 

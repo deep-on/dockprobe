@@ -28,7 +28,7 @@ DockWatch é um painel de monitoramento Docker auto-hospedado que roda como um �
 
 Quando algo dá errado, o DockWatch detecta automaticamente. Seis regras integradas de detecção de anomalias monitoram picos de CPU, estouro de memória, alertas de temperatura, pressão de disco, reinicializações inesperadas e surtos de rede. Os alertas são enviados instantaneamente via Telegram para que você possa reagir antes que os usuários percebam.
 
-Não há agente para instalar em cada contêiner, nem banco de dados externo, nem configuração complexa. Basta montar o socket do Docker, executar um comando, e você terá visibilidade completa do seu ambiente Docker em `https://localhost:9090`.
+Não há agente para instalar em cada contêiner, nem banco de dados externo, nem configuração complexa. Basta montar o socket do Docker, executar um comando, e você terá visibilidade completa do seu ambiente Docker em `https://localhost:9090`. Precisa acessar de fora da sua rede? O suporte integrado ao Cloudflare Tunnel oferece HTTPS público seguro sem redirecionamento de portas.
 
 ---
 
@@ -159,7 +159,7 @@ CF_TUNNEL_TOKEN=your-tunnel-token
 
 ## Modos de acesso
 
-### Opção 1: Local (SSL autoassinado) — padrão
+### Opção 1: Rede local (SSL autoassinado) — padrão
 
 ```bash
 bash install.sh   # escolher opção 1
@@ -167,13 +167,36 @@ bash install.sh   # escolher opção 1
 
 Acesso via `https://localhost:9090` ou `https://<seu-ip>:9090`
 
-### Opção 2: Cloudflare Tunnel (sem redirecionamento de portas)
+Para acessar de outros dispositivos na mesma rede, use o IP LAN do servidor (ex: `https://192.168.1.100:9090`). Se necessário:
+- Liberar a porta no firewall: `sudo ufw allow 9090/tcp`
+- Aceitar o aviso de certificado autoassinado no navegador
+
+### Opção 2: Acesso remoto por redirecionamento de portas
+
+Para acesso externo sem Cloudflare:
+
+1. Redirecionar a porta 9090 no roteador para o IP LAN do servidor
+2. Acessar via `https://<seu-ip-público>:9090`
+3. Usar um serviço DDNS (No-IP, DuckDNS, etc.) se seu IP público mudar
+
+> **Nota:** A porta fica diretamente exposta. Basic Auth + HTTPS estão ativados por padrão, mas recomenda-se o Cloudflare Tunnel (Opção 3) para maior segurança.
+
+### Opção 3: Cloudflare Tunnel (recomendado para acesso remoto)
+
+Sem redirecionamento de portas, sem alterações no firewall, certificado TLS válido — a forma mais fácil e segura de acessar de qualquer lugar.
 
 ```bash
 bash install.sh   # escolher opção 2, colar token do túnel
 ```
 
-HTTPS público via seu domínio Cloudflare Tunnel — sem configuração de roteador necessária.
+**Passos de configuração:**
+1. Criar uma conta gratuita no [Cloudflare Zero Trust](https://one.dash.cloudflare.com)
+2. Ir em **Networks** > **Tunnels** > **Create a tunnel**
+3. Nomear o túnel (ex: `dockwatch`) e copiar o token
+4. Executar `bash install.sh` e escolher a opção Cloudflare Tunnel
+5. Colar o token
+6. No painel do Cloudflare, adicionar um **Public Hostname** apontando para `http://localhost:9090`
+7. Acessar via `https://your-domain.com` com certificado TLS válido
 
 ---
 
