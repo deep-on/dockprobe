@@ -22,6 +22,16 @@
 
 ---
 
+## Was ist DockWatch?
+
+DockWatch ist ein selbst gehostetes Docker-Monitoring-Dashboard, das als einzelner Container läuft. Es sammelt in Echtzeit CPU-, Speicher-, Netzwerk- und Festplattenmetriken von allen Containern und dem Host-System — und zeigt alles in einer übersichtlichen, dunklen Web-Oberfläche an.
+
+Wenn etwas schiefgeht, erkennt DockWatch es automatisch. Sechs integrierte Anomalieerkennungsregeln überwachen CPU-Spitzen, Speicherüberläufe, Temperaturwarnungen, Festplattenengpässe, unerwartete Neustarts und Netzwerkanstiege. Alarme werden sofort per Telegram gesendet, damit Sie reagieren können, bevor Nutzer es bemerken.
+
+Kein Agent muss auf jedem Container installiert werden, keine externe Datenbank, keine komplexe Konfiguration. Einfach den Docker-Socket einbinden, einen Befehl ausführen, und Sie haben unter `https://localhost:9090` volle Übersicht über Ihre Docker-Umgebung.
+
+---
+
 ## Schnellstart
 
 ```bash
