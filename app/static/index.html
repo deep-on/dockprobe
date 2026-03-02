@@ -103,6 +103,7 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
     <h1><img src="/static/logo.png" alt="DeepOn" style="height:28px;vertical-align:middle;margin-right:8px;border-radius:6px"><span>Dock</span>Watch</h1>
     <div class="header-right">
       <div id="lastUpdate">Loading...</div>
+      <button class="btn-icon" onclick="refresh()" title="Refresh">&#8635;</button>
       <button class="btn-icon" onclick="openSettingsModal()" title="Settings">&#9881;</button>
       <button class="btn-icon" onclick="openPwModal()" title="Change Password">&#128274;</button>
     </div>
@@ -132,6 +133,8 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
       <h3>Settings</h3>
       <label>Max Connections <span style="font-size:11px;color:var(--text2)">(0 = unlimited)</span></label>
       <input type="number" id="setMaxConn" min="0" max="100" value="3">
+      <label>Refresh Interval <span style="font-size:11px;color:var(--text2)">(5-60 seconds)</span></label>
+      <input type="number" id="setRefreshInterval" min="5" max="60" value="10">
       <div class="msg" id="settingsMsg"></div>
       <div class="modal-actions">
         <button class="btn btn-cancel" onclick="closeSettingsModal()">Cancel</button>
@@ -175,6 +178,10 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
   </div>
 
   <div class="charts">
+    <div style="grid-column:1/-1;display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text2)">
+      <span>Time Scale: <b id="timeScaleLabel" style="color:var(--accent)">10 min</b></span>
+      <span style="opacity:.6">— Scroll on any chart to zoom</span>
+    </div>
     <div class="chart-box"><h3>Container CPU %</h3><canvas id="chartCpu"></canvas></div>
     <div class="chart-box"><h3>Container Memory %</h3><canvas id="chartMem"></canvas></div>
     <div class="chart-box"><h3>Host Temperature</h3><canvas id="chartTemp"></canvas></div>
@@ -485,21 +492,51 @@ function initCharts() {
   });
 }
 
-// Accumulate chart data points client-side (last 60 points = ~10 min at 10s)
-const MAX_POINTS = 60;
+// Data buffer: store up to 1 hour of data (360 points at 10s interval)
+const MAX_BUFFER = 360;
+let _visiblePoints = 60;  // default visible window (10 min at 10s)
+const MIN_VISIBLE = 10;
+const MAX_VISIBLE = MAX_BUFFER;
 let chartData = { cpu: {}, mem: {}, temp: { cpu: [], gpu: [] }, load: { l1: [], l5: [], l15: [] }, labels: [] };
+
+function _sliceTail(arr, n) { return arr.length <= n ? [...arr] : arr.slice(-n); }
+
+function _updateTimeScaleLabel() {
+  const el = document.getElementById('timeScaleLabel');
+  if (!el) return;
+  // Estimate actual time span based on refresh interval
+  const interval = parseInt(document.getElementById('setRefreshInterval')?.value, 10) || 10;
+  const totalSec = _visiblePoints * interval;
+  if (totalSec < 120) el.textContent = totalSec + 's';
+  else if (totalSec < 3600) el.textContent = Math.round(totalSec / 60) + ' min';
+  else el.textContent = (totalSec / 3600).toFixed(1) + ' hr';
+}
 
 function updateCharts(containers, host) {
   if (!containers) return;
   const now = fmtTime(Date.now() / 1000);
   chartData.labels.push(now);
-  if (chartData.labels.length > MAX_POINTS) chartData.labels.shift();
+  if (chartData.labels.length > MAX_BUFFER) chartData.labels.shift();
+
+  const activeNames = new Set(containers.map(c => c.name));
+
+  // Remove containers that no longer exist
+  for (const name of Object.keys(chartData.cpu)) {
+    if (!activeNames.has(name)) {
+      delete chartData.cpu[name];
+      delete chartData.mem[name];
+    }
+  }
 
   for (const c of containers) {
-    if (!chartData.cpu[c.name]) { chartData.cpu[c.name] = []; chartData.mem[c.name] = []; }
+    if (!chartData.cpu[c.name]) {
+      const pad = Array(chartData.labels.length - 1).fill(null);
+      chartData.cpu[c.name] = [...pad];
+      chartData.mem[c.name] = [...pad];
+    }
     chartData.cpu[c.name].push(c.cpu_pct);
     chartData.mem[c.name].push(c.mem_pct);
-    if (chartData.cpu[c.name].length > MAX_POINTS) { chartData.cpu[c.name].shift(); chartData.mem[c.name].shift(); }
+    if (chartData.cpu[c.name].length > MAX_BUFFER) { chartData.cpu[c.name].shift(); chartData.mem[c.name].shift(); }
   }
 
   if (host) {
@@ -509,50 +546,69 @@ function updateCharts(containers, host) {
     chartData.load.l1.push(load[0]);
     chartData.load.l5.push(load[1]);
     chartData.load.l15.push(load[2]);
-    if (chartData.temp.cpu.length > MAX_POINTS) {
+    if (chartData.temp.cpu.length > MAX_BUFFER) {
       chartData.temp.cpu.shift(); chartData.temp.gpu.shift();
       chartData.load.l1.shift(); chartData.load.l5.shift(); chartData.load.l15.shift();
     }
   }
 
+  renderChartView();
+}
+
+function renderChartView() {
+  const vp = _visiblePoints;
+  const labels = _sliceTail(chartData.labels, vp);
+
   // CPU chart
   const names = Object.keys(chartData.cpu);
-  charts.cpu.data.labels = [...chartData.labels];
+  charts.cpu.data.labels = labels;
   charts.cpu.data.datasets = names.map((n, i) => {
     const color = COLORS[i % COLORS.length];
-    return { label: n, data: [...chartData.cpu[n]], borderColor: color, _origColor: color,
-      borderWidth: 1.5, _origBW: 1.5, pointRadius: 0, tension: 0.3, fill: false };
+    return { label: n, data: _sliceTail(chartData.cpu[n], vp), borderColor: color, _origColor: color,
+      borderWidth: 1.5, _origBW: 1.5, pointRadius: 0, tension: 0.3, fill: false, spanGaps: false };
   });
   charts.cpu.update('none');
   if (_activeChart === charts.cpu) _startAnim();
 
   // Memory chart
-  charts.mem.data.labels = [...chartData.labels];
+  charts.mem.data.labels = labels;
   charts.mem.data.datasets = names.map((n, i) => {
     const color = COLORS[i % COLORS.length];
-    return { label: n, data: [...chartData.mem[n]], borderColor: color, _origColor: color,
-      borderWidth: 1.5, _origBW: 1.5, pointRadius: 0, tension: 0.3, fill: false };
+    return { label: n, data: _sliceTail(chartData.mem[n], vp), borderColor: color, _origColor: color,
+      borderWidth: 1.5, _origBW: 1.5, pointRadius: 0, tension: 0.3, fill: false, spanGaps: false };
   });
   charts.mem.update('none');
   if (_activeChart === charts.mem) _startAnim();
 
   // Temperature chart
-  charts.temp.data.labels = [...chartData.labels];
+  charts.temp.data.labels = labels;
   charts.temp.data.datasets = [
-    { label: 'CPU', data: [...chartData.temp.cpu], borderColor: '#f85149', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
-    { label: 'GPU', data: [...chartData.temp.gpu], borderColor: '#d29922', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true }
+    { label: 'CPU', data: _sliceTail(chartData.temp.cpu, vp), borderColor: '#f85149', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
+    { label: 'GPU', data: _sliceTail(chartData.temp.gpu, vp), borderColor: '#d29922', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true }
   ];
   charts.temp.update('none');
 
   // Load chart
-  charts.load.data.labels = [...chartData.labels];
+  charts.load.data.labels = labels;
   charts.load.data.datasets = [
-    { label: '1 min', data: [...chartData.load.l1], borderColor: '#58a6ff', borderWidth: 2, pointRadius: 0, tension: 0.3 },
-    { label: '5 min', data: [...chartData.load.l5], borderColor: '#3fb950', borderWidth: 2, pointRadius: 0, tension: 0.3 },
-    { label: '15 min', data: [...chartData.load.l15], borderColor: '#d29922', borderWidth: 2, pointRadius: 0, tension: 0.3 }
+    { label: '1 min', data: _sliceTail(chartData.load.l1, vp), borderColor: '#58a6ff', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+    { label: '5 min', data: _sliceTail(chartData.load.l5, vp), borderColor: '#3fb950', borderWidth: 2, pointRadius: 0, tension: 0.3 },
+    { label: '15 min', data: _sliceTail(chartData.load.l15, vp), borderColor: '#d29922', borderWidth: 2, pointRadius: 0, tension: 0.3 }
   ];
   charts.load.update('none');
+  _updateTimeScaleLabel();
 }
+
+// Synchronized mouse wheel zoom across all charts
+function _onChartWheel(e) {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 1 : -1;  // down = zoom out (more points), up = zoom in (fewer)
+  const step = Math.max(5, Math.round(_visiblePoints * 0.15));
+  _visiblePoints = Math.min(MAX_VISIBLE, Math.max(MIN_VISIBLE, _visiblePoints + delta * step));
+  renderChartView();
+}
+
+// Attach wheel listener after charts are initialized (done below after initCharts)
 
 // Table sorting
 document.querySelectorAll('#containerTable th').forEach(th => {
@@ -657,6 +713,7 @@ function openSettingsModal() {
   msg.className = 'msg'; msg.textContent = '';
   fetch('/api/settings').then(r => r.json()).then(data => {
     document.getElementById('setMaxConn').value = data.max_connections || 0;
+    document.getElementById('setRefreshInterval').value = data.refresh_interval || 10;
   });
   document.getElementById('setMaxConn').focus();
 }
@@ -672,19 +729,24 @@ document.getElementById('settingsModal').addEventListener('click', function(e) {
 async function submitSettings() {
   const msg = document.getElementById('settingsMsg');
   const maxConn = parseInt(document.getElementById('setMaxConn').value, 10);
+  const refreshInterval = parseInt(document.getElementById('setRefreshInterval').value, 10);
   if (isNaN(maxConn) || maxConn < 0 || maxConn > 100) {
-    msg.className = 'msg error'; msg.textContent = 'Value must be 0-100 (0=unlimited)'; return;
+    msg.className = 'msg error'; msg.textContent = 'Max connections must be 0-100 (0=unlimited)'; return;
+  }
+  if (isNaN(refreshInterval) || refreshInterval < 5 || refreshInterval > 60) {
+    msg.className = 'msg error'; msg.textContent = 'Refresh interval must be 5-60 seconds'; return;
   }
   try {
     const resp = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ max_connections: maxConn })
+      body: JSON.stringify({ max_connections: maxConn, refresh_interval: refreshInterval })
     });
     const data = await resp.json();
     if (data.ok) {
       msg.className = 'msg ok';
       msg.textContent = 'Settings saved.';
+      _applyRefreshInterval(refreshInterval);
       setTimeout(() => closeSettingsModal(), 1000);
     } else {
       msg.className = 'msg error';
@@ -697,6 +759,11 @@ async function submitSettings() {
 }
 
 initCharts();
+
+// Attach synchronized wheel zoom to all chart canvases
+['chartCpu','chartMem','chartTemp','chartLoad'].forEach(id => {
+  document.getElementById(id).addEventListener('wheel', _onChartWheel, { passive: false });
+});
 
 // ── GitHub stats with warm messages ──
 async function fetchGhStats() {
@@ -727,9 +794,22 @@ async function fetchGhStats() {
   } catch(e) {}
 }
 
+let _refreshTimer = null;
+
+function _applyRefreshInterval(seconds) {
+  if (_refreshTimer) clearInterval(_refreshTimer);
+  _refreshTimer = setInterval(refresh, seconds * 1000);
+}
+
+// Load initial refresh interval from server, then start
+fetch('/api/settings').then(r => r.json()).then(data => {
+  _applyRefreshInterval(data.refresh_interval || 10);
+}).catch(() => {
+  _applyRefreshInterval(10);
+});
+
 refresh();
 fetchGhStats();
-setInterval(refresh, 10000);
 setInterval(fetchGhStats, 600000); // refresh GitHub stats every 10 min
 </script>
 </body>

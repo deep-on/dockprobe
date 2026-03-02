@@ -348,10 +348,16 @@ async def api_session(request: Request):
     })
 
 
+def _get_refresh_interval() -> int:
+    s = _load_settings()
+    return s.get("refresh_interval", 10)
+
+
 @app.get("/api/settings")
 async def api_get_settings():
     return JSONResponse({
         "max_connections": _get_max_connections(),
+        "refresh_interval": _get_refresh_interval(),
     })
 
 
@@ -371,6 +377,15 @@ async def api_update_settings(request: Request):
             updated["max_connections"] = val
         except (ValueError, TypeError):
             return JSONResponse({"ok": False, "error": "max_connections must be a number"}, status_code=400)
+
+    if "refresh_interval" in body:
+        try:
+            val = int(body["refresh_interval"])
+            if val < 5 or val > 60:
+                return JSONResponse({"ok": False, "error": "refresh_interval must be 5-60 seconds"}, status_code=400)
+            updated["refresh_interval"] = val
+        except (ValueError, TypeError):
+            return JSONResponse({"ok": False, "error": "refresh_interval must be a number"}, status_code=400)
 
     if not updated:
         return JSONResponse({"ok": False, "error": "No valid settings provided"}, status_code=400)

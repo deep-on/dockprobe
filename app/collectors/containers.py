@@ -12,7 +12,7 @@ async def collect_container_stats() -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     docker = aiodocker.Docker()
     try:
-        containers = await docker.containers.list()
+        containers = await docker.containers.list(all=True)
         tasks = [_get_one_stat(c) for c in containers]
         stats_list = await asyncio.gather(*tasks, return_exceptions=True)
         for s in stats_list:
@@ -28,6 +28,10 @@ async def _get_one_stat(container: aiodocker.docker.DockerContainer) -> dict[str
     name = info["Name"].lstrip("/")
     state = info["State"]
     restart_count = info.get("RestartCount", 0)
+
+    # Non-running containers can't provide stats
+    if state.get("Status", "unknown") != "running":
+        return _empty_stat(name, state, restart_count)
 
     # One-shot stats (stream=False) returns a list with one entry
     stats_result = await container.stats(stream=False)
