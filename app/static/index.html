@@ -180,7 +180,7 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
   <div class="charts">
     <div style="grid-column:1/-1;display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text2)">
       <span>Time Scale: <b id="timeScaleLabel" style="color:var(--accent)">10 min</b></span>
-      <span style="opacity:.6">— Scroll on any chart to zoom</span>
+      <span style="opacity:.6">— Ctrl + Scroll on any chart to zoom</span>
     </div>
     <div class="chart-box"><h3>Container CPU %</h3><canvas id="chartCpu"></canvas></div>
     <div class="chart-box"><h3>Container Memory %</h3><canvas id="chartMem"></canvas></div>
@@ -601,6 +601,7 @@ function renderChartView() {
 
 // Synchronized mouse wheel zoom across all charts
 function _onChartWheel(e) {
+  if (!e.ctrlKey && !e.metaKey) return;  // require Ctrl (or Cmd on Mac)
   e.preventDefault();
   const delta = e.deltaY > 0 ? 1 : -1;  // down = zoom out (more points), up = zoom in (fewer)
   const step = Math.max(5, Math.round(_visiblePoints * 0.15));
