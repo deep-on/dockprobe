@@ -183,6 +183,7 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
       <span style="opacity:.6">— Ctrl + Scroll on any chart to zoom</span>
     </div>
     <div class="chart-box"><h3>Container CPU %</h3><canvas id="chartCpu"></canvas></div>
+    <div class="chart-box"><h3>Host CPU % <span style="font-size:11px;color:var(--text2);font-weight:400">— system-wide (usr+sys)</span></h3><canvas id="chartHostCpu"></canvas></div>
     <div class="chart-box"><h3>Container Memory %</h3><canvas id="chartMem"></canvas></div>
     <div class="chart-box"><h3>Host Temperature</h3><canvas id="chartTemp"></canvas></div>
     <div class="chart-box"><h3>Host Load Average <span style="font-size:11px;color:var(--text2);font-weight:400">— CPU 대기 프로세스 수 (1min / 5min / 15min)</span></h3><canvas id="chartLoad"></canvas></div>
@@ -242,9 +243,12 @@ function renderHostCards(host) {
   const disk = (host.disk && host.disk[0]) || {};
   const load = host.load_avg || [0,0,0];
   const cores = host.cpu_cores || 1;
+  const cpuPct = host.cpu_pct;
+  const cpuColor = cpuPct > 80 ? 'var(--red)' : cpuPct > 50 ? 'var(--yellow)' : 'var(--green)';
   const loadPct = Math.round(load[0] / cores * 100);
   const loadColor = loadPct > 100 ? 'var(--red)' : loadPct > 70 ? 'var(--yellow)' : 'var(--green)';
   el.innerHTML = `
+    <div class="card" title="호스트 전체 CPU 사용률 (usr+sys)&#10;컨테이너 + 호스트 프로세스 포함"><div class="label">Host CPU</div><div class="value" style="color:${cpuColor}">${cpuPct != null ? cpuPct + '%' : 'N/A'}</div><div class="sub">${cores} cores</div></div>
     <div class="card"><div class="label">CPU Temp</div><div class="value" style="color:${host.cpu_temp > 85 ? 'var(--red)' : host.cpu_temp > 70 ? 'var(--yellow)' : 'var(--green)'}">${host.cpu_temp != null ? host.cpu_temp + '°C' : 'N/A'}</div></div>
     <div class="card"><div class="label">GPU Temp</div><div class="value" style="color:${host.gpu_temp > 85 ? 'var(--red)' : host.gpu_temp > 70 ? 'var(--yellow)' : 'var(--green)'}">${host.gpu_temp != null ? host.gpu_temp + '°C' : 'N/A'}</div></div>
     <div class="card"><div class="label">Disk /</div><div class="value" style="color:${disk.pct > 90 ? 'var(--red)' : disk.pct > 80 ? 'var(--yellow)' : 'var(--text)'}">${disk.pct != null ? disk.pct + '%' : 'N/A'}</div><div class="sub">${fmt(disk.used)} / ${fmt(disk.total)}</div></div>
@@ -478,6 +482,10 @@ function initCharts() {
     type: 'line', data: { labels: [], datasets: [] }, plugins: [highlightPlugin],
     options: { ...commonOpts, scales: { ...scaleOpts, y: { ...scaleOpts.y, min: 0, suggestedMax: 100 } } }
   });
+  charts.hostCpu = new Chart(document.getElementById('chartHostCpu'), {
+    type: 'line', data: { labels: [], datasets: [] },
+    options: { ...simpleOpts, scales: { ...scaleOpts, y: { ...scaleOpts.y, min: 0, suggestedMax: 100 } } }
+  });
   charts.mem = new Chart(document.getElementById('chartMem'), {
     type: 'line', data: { labels: [], datasets: [] }, plugins: [highlightPlugin],
     options: { ...commonOpts, scales: { ...scaleOpts, y: { ...scaleOpts.y, min: 0, suggestedMax: 100 } } }
@@ -497,7 +505,7 @@ const MAX_BUFFER = 360;
 let _visiblePoints = 60;  // default visible window (10 min at 10s)
 const MIN_VISIBLE = 10;
 const MAX_VISIBLE = MAX_BUFFER;
-let chartData = { cpu: {}, mem: {}, temp: { cpu: [], gpu: [] }, load: { l1: [], l5: [], l15: [] }, labels: [] };
+let chartData = { cpu: {}, mem: {}, temp: { cpu: [], gpu: [] }, load: { l1: [], l5: [], l15: [] }, hostCpu: [], labels: [] };
 
 function _sliceTail(arr, n) { return arr.length <= n ? [...arr] : arr.slice(-n); }
 
@@ -542,12 +550,13 @@ function updateCharts(containers, host) {
   if (host) {
     chartData.temp.cpu.push(host.cpu_temp);
     chartData.temp.gpu.push(host.gpu_temp);
+    chartData.hostCpu.push(host.cpu_pct != null ? host.cpu_pct : null);
     const load = host.load_avg || [0,0,0];
     chartData.load.l1.push(load[0]);
     chartData.load.l5.push(load[1]);
     chartData.load.l15.push(load[2]);
     if (chartData.temp.cpu.length > MAX_BUFFER) {
-      chartData.temp.cpu.shift(); chartData.temp.gpu.shift();
+      chartData.temp.cpu.shift(); chartData.temp.gpu.shift(); chartData.hostCpu.shift();
       chartData.load.l1.shift(); chartData.load.l5.shift(); chartData.load.l15.shift();
     }
   }
@@ -569,6 +578,13 @@ function renderChartView() {
   });
   charts.cpu.update('none');
   if (_activeChart === charts.cpu) _startAnim();
+
+  // Host CPU chart
+  charts.hostCpu.data.labels = labels;
+  charts.hostCpu.data.datasets = [
+    { label: 'Host CPU', data: _sliceTail(chartData.hostCpu, vp), borderColor: '#58a6ff', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true }
+  ];
+  charts.hostCpu.update('none');
 
   // Memory chart
   charts.mem.data.labels = labels;
@@ -762,7 +778,7 @@ async function submitSettings() {
 initCharts();
 
 // Attach synchronized wheel zoom to all chart canvases
-['chartCpu','chartMem','chartTemp','chartLoad'].forEach(id => {
+['chartCpu','chartHostCpu','chartMem','chartTemp','chartLoad'].forEach(id => {
   document.getElementById(id).addEventListener('wheel', _onChartWheel, { passive: false });
 });
 

@@ -14,8 +14,47 @@ def collect_host_stats() -> dict[str, Any]:
         "disk": _disk_usage(),
         "load_avg": _load_avg(),
         "cpu_cores": os.cpu_count() or 1,
+        "cpu_pct": _cpu_percent(),
         "ts": time.time(),
     }
+
+
+# ── Host CPU % via /proc/stat ──
+
+_prev_cpu: list[int] | None = None
+
+
+def _read_cpu_times() -> list[int] | None:
+    """Read aggregate CPU times from /host_proc/stat (or /proc/stat)."""
+    for path in ("/host_proc/stat", "/proc/stat"):
+        try:
+            with open(path) as f:
+                for line in f:
+                    if line.startswith("cpu "):
+                        # user nice system idle iowait irq softirq steal
+                        return [int(x) for x in line.split()[1:9]]
+        except OSError:
+            continue
+    return None
+
+
+def _cpu_percent() -> float | None:
+    """Calculate host CPU usage % between two collection cycles."""
+    global _prev_cpu
+    cur = _read_cpu_times()
+    if cur is None:
+        return None
+    if _prev_cpu is None:
+        _prev_cpu = cur
+        return None  # need two samples
+
+    deltas = [c - p for c, p in zip(cur, _prev_cpu)]
+    _prev_cpu = cur
+    total = sum(deltas)
+    if total <= 0:
+        return 0.0
+    idle = deltas[3] + deltas[4]  # idle + iowait
+    return round((1 - idle / total) * 100, 1)
 
 
 def _cpu_temp() -> float | None:
