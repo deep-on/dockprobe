@@ -1,4 +1,4 @@
-# DockWatch — YouTube Shorts Script (60s)
+# DockProbe — YouTube Shorts Script (60s)
 
 ## Storyboard
 
@@ -11,8 +11,8 @@
 | 28–36s | **Dashboard Tour — Charts** | "Live charts for CPU trends, memory, temperature, and load." | Scroll to charts section, hover over Chart.js graphs |
 | 36–44s | **Anomaly Detection** | "Built-in anomaly detection. CPU spike? Memory overflow? You get a Telegram alert instantly." | Show a red-highlighted container row → cut to Telegram notification on phone |
 | 44–50s | **Tech Stack** | "4 Python packages. Single HTML file. SQLite. Nothing else." | Text overlay listing: FastAPI, uvicorn, aiodocker, httpx. Show the single index.html file |
-| 50–57s | **Why It's Different** | "No database to manage. No YAML config files. Just clone, install, done." | Side-by-side comparison: Prometheus+Grafana stack diagram vs DockWatch single container |
-| 57–60s | **CTA** | "Link in bio. Star it on GitHub." | DockWatch logo + GitHub URL + star button animation |
+| 50–57s | **Why It's Different** | "No database to manage. No YAML config files. Just clone, install, done." | Side-by-side comparison: Prometheus+Grafana stack diagram vs DockProbe single container |
+| 57–60s | **CTA** | "Link in bio. Star it on GitHub." | DockProbe logo + GitHub URL + star button animation |
 
 ---
 
@@ -26,7 +26,7 @@
 ### Screen Recording Settings
 - **Terminal font size:** 20pt+ (must be readable on mobile)
 - **Browser zoom:** 125–150% (dashboard elements must be visible at 1080px wide crop)
-- **Dark mode:** Use the default DockWatch dark theme
+- **Dark mode:** Use the default DockProbe dark theme
 - **Clean desktop:** Hide taskbar, notifications, bookmarks bar
 
 ### Dashboard Capture Tips
@@ -42,9 +42,9 @@
 - Add sound effects on transitions (subtle whoosh or click)
 
 ### Thumbnail
-- Split screen: messy Grafana/Prometheus setup (left, red tint) vs clean DockWatch dashboard (right, green tint)
+- Split screen: messy Grafana/Prometheus setup (left, red tint) vs clean DockProbe dashboard (right, green tint)
 - Large text: "Monitor Docker in 60s"
-- DockWatch logo in corner
+- DockProbe logo in corner
 
 ---
 

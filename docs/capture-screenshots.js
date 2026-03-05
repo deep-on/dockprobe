@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * DockWatch Dashboard Screenshot Capture
+ * DockProbe Dashboard Screenshot Capture
  * Usage: node docs/capture-screenshots.js [base-url]
  *
  * Requires: npm install puppeteer-core

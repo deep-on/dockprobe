@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="app/static/logo.png" width="80" alt="DockWatch">
+  <img src="app/static/logo.png" width="80" alt="DockProbe">
 </p>
 
-<h1 align="center">DockWatch</h1>
+<h1 align="center">DockProbe</h1>
 
 <p align="center">
   <b>Panel de monitoreo Docker ligero con detección de anomalías y alertas de Telegram</b><br>
@@ -22,11 +22,11 @@
 
 ---
 
-## ¿Qué es DockWatch?
+## ¿Qué es DockProbe?
 
-DockWatch es un panel de monitoreo Docker autoalojado que se ejecuta como un único contenedor. Recopila en tiempo real métricas de CPU, memoria, red y disco de todos tus contenedores y de la máquina host — y muestra todo en una interfaz web limpia con tema oscuro.
+DockProbe es un panel de monitoreo Docker autoalojado que se ejecuta como un único contenedor. Recopila en tiempo real métricas de CPU, memoria, red y disco de todos tus contenedores y de la máquina host — y muestra todo en una interfaz web limpia con tema oscuro.
 
-Cuando algo sale mal, DockWatch lo detecta automáticamente. Seis reglas integradas de detección de anomalías vigilan picos de CPU, desbordamientos de memoria, alertas de temperatura, presión de disco, reinicios inesperados y aumentos de red. Las alertas se envían instantáneamente por Telegram para que puedas responder antes de que los usuarios lo noten.
+Cuando algo sale mal, DockProbe lo detecta automáticamente. Seis reglas integradas de detección de anomalías vigilan picos de CPU, desbordamientos de memoria, alertas de temperatura, presión de disco, reinicios inesperados y aumentos de red. Las alertas se envían instantáneamente por Telegram para que puedas responder antes de que los usuarios lo noten.
 
 No hay agentes que instalar en cada contenedor, ni base de datos externa, ni configuración compleja. Solo monta el socket de Docker, ejecuta un comando y tendrás visibilidad completa de tu entorno Docker en `https://localhost:9090`. ¿Necesitas acceso desde fuera de tu red? El soporte integrado de Cloudflare Tunnel ofrece HTTPS público seguro sin redirección de puertos.
 
@@ -35,7 +35,7 @@ No hay agentes que instalar en cada contenedor, ni base de datos externa, ni con
 ## Inicio rápido
 
 ```bash
-git clone https://github.com/deep-on/dockwatch.git && cd dockwatch && bash install.sh
+git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash install.sh
 ```
 
 Eso es todo. El instalador interactivo configura la autenticación, alertas de Telegram y HTTPS — luego abre `https://localhost:9090`.
@@ -47,7 +47,7 @@ Eso es todo. El instalador interactivo configura la autenticación, alertas de T
 ## Vista previa del panel
 
 <p align="center">
-  <img src="docs/screenshots/dashboard-full.png" alt="Panel DockWatch" width="800">
+  <img src="docs/screenshots/dashboard-full.png" alt="Panel DockProbe" width="800">
 </p>
 
 ---
@@ -102,7 +102,7 @@ Todos los umbrales son configurables mediante variables de entorno.
 
 ```
 ┌─────────────────────────────────────────┐
-│  DockWatch Container                    │
+│  DockProbe Container                    │
 │                                         │
 │  FastAPI + uvicorn (puerto 9090)        │
 │  ├── collectors/                        │
@@ -171,7 +171,7 @@ Para acceder desde otros dispositivos en la misma red, usa la IP LAN del servido
 - Permitir el puerto en el firewall: `sudo ufw allow 9090/tcp`
 - Aceptar la advertencia del certificado autofirmado en el navegador
 
-> **¿Por qué aparece la advertencia del navegador?** DockWatch usa un certificado SSL autofirmado generado durante la instalación. Como no fue emitido por una Autoridad Certificadora (CA) confiable, el navegador muestra una advertencia de "Tu conexión no es privada". Esto es normal — haz clic en "Avanzado" → "Continuar al sitio". Para eliminar esta advertencia, usa Cloudflare Tunnel (Opción 3) que proporciona un certificado TLS confiable automáticamente.
+> **¿Por qué aparece la advertencia del navegador?** DockProbe usa un certificado SSL autofirmado generado durante la instalación. Como no fue emitido por una Autoridad Certificadora (CA) confiable, el navegador muestra una advertencia de "Tu conexión no es privada". Esto es normal — haz clic en "Avanzado" → "Continuar al sitio". Para eliminar esta advertencia, usa Cloudflare Tunnel (Opción 3) que proporciona un certificado TLS confiable automáticamente.
 
 ### Opción 2: Acceso remoto por redirección de puertos
 
@@ -194,7 +194,7 @@ bash install.sh   # elegir opción 2, pegar token del túnel
 **Pasos de configuración:**
 1. Crear una cuenta gratuita en [Cloudflare Zero Trust](https://one.dash.cloudflare.com)
 2. Ir a **Networks** > **Tunnels** > **Create a tunnel**
-3. Nombrar el túnel (ej: `dockwatch`) y copiar el token
+3. Nombrar el túnel (ej: `dockprobe`) y copiar el token
 4. Ejecutar `bash install.sh` y elegir la opción Cloudflare Tunnel
 5. Pegar el token
 6. En el panel de Cloudflare, agregar un **Public Hostname** apuntando a `http://localhost:9090`
@@ -234,8 +234,8 @@ bash install.sh   # elegir opción 2, pegar token del túnel
 Si prefieres la configuración manual:
 
 ```bash
-git clone https://github.com/deep-on/dockwatch.git
-cd dockwatch
+git clone https://github.com/deep-on/dockprobe.git
+cd dockprobe
 
 # Crear .env
 cp .env.example .env
@@ -245,7 +245,7 @@ vi .env
 mkdir -p certs
 openssl req -x509 -newkey rsa:2048 -nodes \
   -keyout certs/key.pem -out certs/cert.pem \
-  -days 365 -subj "/CN=dockwatch"
+  -days 365 -subj "/CN=dockprobe"
 
 # Iniciar
 docker compose up -d --build

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="app/static/logo.png" width="80" alt="DockWatch">
+  <img src="app/static/logo.png" width="80" alt="DockProbe">
 </p>
 
-<h1 align="center">DockWatch</h1>
+<h1 align="center">DockProbe</h1>
 
 <p align="center">
   <b>Lightweight Docker monitoring dashboard with anomaly detection & Telegram alerts.</b><br>
@@ -22,11 +22,11 @@
 
 ---
 
-## What is DockWatch?
+## What is DockProbe?
 
-DockWatch is a self-hosted Docker monitoring dashboard that runs as a single container. It collects real-time CPU, memory, network, and disk metrics from all your containers and the host machine — then displays everything in a clean, dark-themed web UI.
+DockProbe is a self-hosted Docker monitoring dashboard that runs as a single container. It collects real-time CPU, memory, network, and disk metrics from all your containers and the host machine — then displays everything in a clean, dark-themed web UI.
 
-When something goes wrong, DockWatch detects it automatically. Six built-in anomaly detection rules watch for CPU spikes, memory overflows, temperature warnings, disk pressure, unexpected restarts, and network surges. Alerts are sent instantly to Telegram so you can respond before users notice.
+When something goes wrong, DockProbe detects it automatically. Six built-in anomaly detection rules watch for CPU spikes, memory overflows, temperature warnings, disk pressure, unexpected restarts, and network surges. Alerts are sent instantly to Telegram so you can respond before users notice.
 
 There's no agent to install on each container, no external database, no complex configuration. Just mount the Docker socket, run one command, and you have full visibility into your Docker environment at `https://localhost:9090`. Need access from outside your network? Built-in Cloudflare Tunnel support gives you secure public HTTPS with zero port-forwarding.
 
@@ -35,7 +35,7 @@ There's no agent to install on each container, no external database, no complex 
 ## Quick Start
 
 ```bash
-git clone https://github.com/deep-on/dockwatch.git && cd dockwatch && bash install.sh
+git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash install.sh
 ```
 
 That's it. The interactive installer sets up authentication, Telegram alerts, and HTTPS — then opens `https://localhost:9090`.
@@ -47,7 +47,7 @@ That's it. The interactive installer sets up authentication, Telegram alerts, an
 ## Dashboard Preview
 
 <p align="center">
-  <img src="docs/screenshots/dashboard-full.png" alt="DockWatch Dashboard" width="800">
+  <img src="docs/screenshots/dashboard-full.png" alt="DockProbe Dashboard" width="800">
 </p>
 
 ---
@@ -102,7 +102,7 @@ All thresholds are configurable via environment variables.
 
 ```
 ┌─────────────────────────────────────────┐
-│  DockWatch Container                    │
+│  DockProbe Container                    │
 │                                         │
 │  FastAPI + uvicorn (port 9090)          │
 │  ├── collectors/                        │
@@ -171,11 +171,11 @@ To access from other devices on the same network, use the server's LAN IP (e.g. 
 - Allow port 9090 in the firewall: `sudo ufw allow 9090/tcp`
 - Accept the self-signed certificate warning in your browser
 
-> **Why the browser warning?** DockWatch uses a self-signed SSL certificate generated during installation. Since it's not issued by a trusted Certificate Authority (CA), browsers show a "Your connection is not private" warning. This is normal and expected — click "Advanced" → "Proceed to site" to continue. To eliminate this warning, use Cloudflare Tunnel (Option 3) which provides a trusted TLS certificate automatically.
+> **Why the browser warning?** DockProbe uses a self-signed SSL certificate generated during installation. Since it's not issued by a trusted Certificate Authority (CA), browsers show a "Your connection is not private" warning. This is normal and expected — click "Advanced" → "Proceed to site" to continue. To eliminate this warning, use Cloudflare Tunnel (Option 3) which provides a trusted TLS certificate automatically.
 
 ### Option 2: Remote Access via Port Forwarding
 
-If you want to access DockWatch from outside your local network without Cloudflare:
+If you want to access DockProbe from outside your local network without Cloudflare:
 
 1. Forward port 9090 on your router to the server's LAN IP
 2. Access via `https://<your-public-ip>:9090`
@@ -185,7 +185,7 @@ If you want to access DockWatch from outside your local network without Cloudfla
 
 ### Option 3: Cloudflare Tunnel (recommended for remote access)
 
-No port-forwarding, no firewall changes, proper TLS certificate — the easiest way to access DockWatch from anywhere.
+No port-forwarding, no firewall changes, proper TLS certificate — the easiest way to access DockProbe from anywhere.
 
 ```bash
 bash install.sh   # choose option 2, paste tunnel token
@@ -194,7 +194,7 @@ bash install.sh   # choose option 2, paste tunnel token
 **Setup steps:**
 1. Create a free account at [Cloudflare Zero Trust](https://one.dash.cloudflare.com)
 2. Go to **Networks** > **Tunnels** > **Create a tunnel**
-3. Name your tunnel (e.g. `dockwatch`) and copy the tunnel token
+3. Name your tunnel (e.g. `dockprobe`) and copy the tunnel token
 4. Run `bash install.sh` and choose the Cloudflare Tunnel option
 5. Paste the token when prompted
 6. In the Cloudflare dashboard, add a **Public Hostname** pointing to `http://localhost:9090`
@@ -234,8 +234,8 @@ bash install.sh   # choose option 2, paste tunnel token
 If you prefer manual configuration over the install script:
 
 ```bash
-git clone https://github.com/deep-on/dockwatch.git
-cd dockwatch
+git clone https://github.com/deep-on/dockprobe.git
+cd dockprobe
 
 # Create .env
 cp .env.example .env
@@ -245,7 +245,7 @@ vi .env
 mkdir -p certs
 openssl req -x509 -newkey rsa:2048 -nodes \
   -keyout certs/key.pem -out certs/cert.pem \
-  -days 365 -subj "/CN=dockwatch"
+  -days 365 -subj "/CN=dockprobe"
 
 # Start
 docker compose up -d --build

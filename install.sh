@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
-# DockWatch - One-liner Installer
-# Usage: git clone https://github.com/deep-on/dockwatch.git && cd dockwatch && bash install.sh
+# DockProbe - One-liner Installer
+# Usage: git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash install.sh
 
-REPO="https://github.com/deep-on/dockwatch.git"
-DIR="$HOME/dockwatch"
+REPO="https://github.com/deep-on/dockprobe.git"
+DIR="$HOME/dockprobe"
 BOLD='\033[1m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -16,7 +16,7 @@ NC='\033[0m'
 banner() {
   echo -e "${CYAN}${BOLD}"
   echo "  ╔═══════════════════════════════════════╗"
-  echo "  ║        DockWatch Installer            ║"
+  echo "  ║        DockProbe Installer            ║"
   echo "  ╚═══════════════════════════════════════╝"
   echo -e "${NC}"
 }

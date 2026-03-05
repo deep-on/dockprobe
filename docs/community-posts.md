@@ -1,4 +1,4 @@
-# DockWatch Community Posts
+# DockProbe Community Posts
 
 Ready-to-post drafts for community promotion. Adjust tone and details as needed before posting.
 
@@ -12,7 +12,7 @@ Ready-to-post drafts for community promotion. Adjust tone and details as needed 
 
 Hey r/selfhosted,
 
-I've been running a small homelab and got tired of setting up Prometheus + Grafana just to keep an eye on my containers. So I built **DockWatch** — a self-hosted Docker monitoring dashboard that's intentionally minimal.
+I've been running a small homelab and got tired of setting up Prometheus + Grafana just to keep an eye on my containers. So I built **DockProbe** — a self-hosted Docker monitoring dashboard that's intentionally minimal.
 
 **What it does:**
 - Real-time container monitoring (CPU, memory, network, disk I/O)
@@ -33,7 +33,7 @@ I've been running a small homelab and got tired of setting up Prometheus + Grafa
 1. Self-signed SSL (local/LAN)
 2. Cloudflare Tunnel (public access, no port forwarding)
 
-It's MIT licensed and open source: https://github.com/deep-on/dockwatch
+It's MIT licensed and open source: https://github.com/deep-on/dockprobe
 
 Happy to answer questions or take feature requests!
 
@@ -41,7 +41,7 @@ Happy to answer questions or take feature requests!
 
 ## Reddit r/docker
 
-**Title:** DockWatch — a zero-config Docker monitoring dashboard (alternative to Prometheus+Grafana for simple setups)
+**Title:** DockProbe — a zero-config Docker monitoring dashboard (alternative to Prometheus+Grafana for simple setups)
 
 **Body:**
 
@@ -49,7 +49,7 @@ I built a monitoring tool for people who want container visibility without the o
 
 **The problem:** I just wanted to see which containers are eating CPU/memory and get alerted when something goes wrong. Setting up Prometheus + Grafana + alertmanager felt like deploying a second infrastructure just to monitor the first one.
 
-**The solution — DockWatch:**
+**The solution — DockProbe:**
 - Connects to Docker socket (read-only) and collects container stats every 10 seconds
 - Shows everything in a single dark-themed web dashboard
 - Built-in anomaly detection: CPU spikes (3 consecutive checks >80%), memory overflow (>90%), restart detection, network surges
@@ -64,22 +64,22 @@ I built a monitoring tool for people who want container visibility without the o
 - Basic Auth + rate limiting + HTTPS out of the box
 
 ```bash
-git clone https://github.com/deep-on/dockwatch.git && cd dockwatch && bash install.sh
+git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash install.sh
 ```
 
 It's not trying to replace Grafana for complex setups — it's for the "I just want to see what's happening" use case.
 
-GitHub: https://github.com/deep-on/dockwatch
+GitHub: https://github.com/deep-on/dockprobe
 
 ---
 
 ## Hacker News — Show HN
 
-**Title:** Show HN: DockWatch – Lightweight Docker monitoring with anomaly detection (4 dependencies)
+**Title:** Show HN: DockProbe – Lightweight Docker monitoring with anomaly detection (4 dependencies)
 
 **Body:**
 
-I built DockWatch, a self-hosted Docker monitoring dashboard focused on simplicity.
+I built DockProbe, a self-hosted Docker monitoring dashboard focused on simplicity.
 
 Design decisions that shaped the project:
 
@@ -97,6 +97,6 @@ Design decisions that shaped the project:
 
 The trade-off is clear: this doesn't scale to hundreds of hosts or provide PromQL-style queries. It's for the single-host or small-cluster use case where you want visibility in 60 seconds.
 
-Install: `git clone https://github.com/deep-on/dockwatch.git && cd dockwatch && bash install.sh`
+Install: `git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash install.sh`
 
-GitHub: https://github.com/deep-on/dockwatch
+GitHub: https://github.com/deep-on/dockprobe

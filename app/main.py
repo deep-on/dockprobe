@@ -402,7 +402,7 @@ async def api_update_settings(request: Request):
 
 # ── GitHub repo stats (cached 10 min) ──
 _gh_cache: dict[str, Any] = {"data": None, "ts": 0}
-GH_REPO = "deep-on/dockwatch"
+GH_REPO = "deep-on/dockprobe"
 GH_CACHE_TTL = 600
 
 
