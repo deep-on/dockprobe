@@ -171,6 +171,8 @@ Für den Zugriff von anderen Geräten im selben Netzwerk verwenden Sie die LAN-I
 - Port in der Firewall freigeben: `sudo ufw allow 9090/tcp`
 - Selbstsignierte Zertifikatswarnung im Browser akzeptieren
 
+> **Warum die Browser-Warnung?** DockWatch verwendet ein bei der Installation generiertes selbstsigniertes SSL-Zertifikat. Da es nicht von einer vertrauenswürdigen Zertifizierungsstelle (CA) ausgestellt wurde, zeigt der Browser eine "Ihre Verbindung ist nicht privat"-Warnung. Dies ist normal — klicken Sie auf "Erweitert" → "Weiter zur Seite". Um diese Warnung zu vermeiden, verwenden Sie Cloudflare Tunnel (Option 3), der automatisch ein vertrauenswürdiges TLS-Zertifikat bereitstellt.
+
 ### Option 2: Fernzugriff per Portweiterleitung
 
 Für externen Zugriff ohne Cloudflare:

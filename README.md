@@ -171,6 +171,8 @@ To access from other devices on the same network, use the server's LAN IP (e.g. 
 - Allow port 9090 in the firewall: `sudo ufw allow 9090/tcp`
 - Accept the self-signed certificate warning in your browser
 
+> **Why the browser warning?** DockWatch uses a self-signed SSL certificate generated during installation. Since it's not issued by a trusted Certificate Authority (CA), browsers show a "Your connection is not private" warning. This is normal and expected — click "Advanced" → "Proceed to site" to continue. To eliminate this warning, use Cloudflare Tunnel (Option 3) which provides a trusted TLS certificate automatically.
+
 ### Option 2: Remote Access via Port Forwarding
 
 If you want to access DockWatch from outside your local network without Cloudflare:

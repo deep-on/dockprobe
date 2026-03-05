@@ -171,6 +171,8 @@ Per accedere da altri dispositivi sulla stessa rete, usa l'IP LAN del server (es
 - Aprire la porta nel firewall: `sudo ufw allow 9090/tcp`
 - Accettare l'avviso del certificato autofirmato nel browser
 
+> **Perché l'avviso del browser?** DockWatch utilizza un certificato SSL autofirmato generato durante l'installazione. Poiché non è emesso da un'Autorità di Certificazione (CA) affidabile, il browser mostra un avviso "La connessione non è privata". Questo è normale — clicca su "Avanzate" → "Procedi al sito". Per eliminare questo avviso, usa Cloudflare Tunnel (Opzione 3) che fornisce automaticamente un certificato TLS affidabile.
+
 ### Opzione 2: Accesso remoto tramite port forwarding
 
 Per accesso esterno senza Cloudflare:

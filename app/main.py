@@ -236,10 +236,15 @@ def _check_auth(request: Request) -> Response | None:
     _record_fail(ip)
     remaining = RATE_MAX_FAILS - len(_fail_log[ip])
     logger.warning("Auth failed from %s (%d attempts left)", ip, max(remaining, 0))
+    # Return HTML body so mobile browsers redirect properly after Basic Auth
     return Response(
         status_code=401,
-        headers={"WWW-Authenticate": 'Basic realm="Docker Monitor"'},
-        content="Unauthorized",
+        headers={
+            "WWW-Authenticate": 'Basic realm="Docker Monitor"',
+            "Content-Type": "text/html; charset=utf-8",
+        },
+        content='<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=/"></head>'
+                '<body><p>Unauthorized. <a href="/">Login</a></p></body></html>',
     )
 
 

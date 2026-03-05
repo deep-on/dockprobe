@@ -625,7 +625,34 @@ function _onChartWheel(e) {
   renderChartView();
 }
 
-// Attach wheel listener after charts are initialized (done below after initCharts)
+// ── Touch pinch-to-zoom for mobile ──
+let _pinchStartDist = 0;
+let _pinchStartPoints = 0;
+
+function _getTouchDist(e) {
+  const t = e.touches;
+  const dx = t[0].clientX - t[1].clientX;
+  const dy = t[0].clientY - t[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function _onTouchStart(e) {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    _pinchStartDist = _getTouchDist(e);
+    _pinchStartPoints = _visiblePoints;
+  }
+}
+
+function _onTouchMove(e) {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dist = _getTouchDist(e);
+    const ratio = _pinchStartDist / dist;  // pinch in = ratio > 1 = zoom out (more points)
+    _visiblePoints = Math.min(MAX_VISIBLE, Math.max(MIN_VISIBLE, Math.round(_pinchStartPoints * ratio)));
+    renderChartView();
+  }
+}
 
 // Table sorting
 document.querySelectorAll('#containerTable th').forEach(th => {
@@ -777,9 +804,12 @@ async function submitSettings() {
 
 initCharts();
 
-// Attach synchronized wheel zoom to all chart canvases
+// Attach synchronized wheel zoom + touch pinch-to-zoom to all chart canvases
 ['chartCpu','chartHostCpu','chartMem','chartTemp','chartLoad'].forEach(id => {
-  document.getElementById(id).addEventListener('wheel', _onChartWheel, { passive: false });
+  const el = document.getElementById(id);
+  el.addEventListener('wheel', _onChartWheel, { passive: false });
+  el.addEventListener('touchstart', _onTouchStart, { passive: false });
+  el.addEventListener('touchmove', _onTouchMove, { passive: false });
 });
 
 // ── GitHub stats with warm messages ──

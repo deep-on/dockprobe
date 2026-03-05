@@ -171,6 +171,8 @@ Para acessar de outros dispositivos na mesma rede, use o IP LAN do servidor (ex:
 - Liberar a porta no firewall: `sudo ufw allow 9090/tcp`
 - Aceitar o aviso de certificado autoassinado no navegador
 
+> **Por que o aviso do navegador?** O DockWatch usa um certificado SSL autoassinado gerado durante a instalação. Como não foi emitido por uma Autoridade Certificadora (CA) confiável, o navegador exibe um aviso "Sua conexão não é particular". Isso é normal — clique em "Avançado" → "Prosseguir para o site". Para eliminar este aviso, use o Cloudflare Tunnel (Opção 3) que fornece automaticamente um certificado TLS confiável.
+
 ### Opção 2: Acesso remoto por redirecionamento de portas
 
 Para acesso externo sem Cloudflare:
