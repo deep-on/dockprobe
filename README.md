@@ -117,6 +117,8 @@ DockProbe runs 16 automated security checks every 5 minutes and displays results
 
 > Host-level checks require volume mounts (`/proc:/host_proc:ro`, `/sys:/host_sys:ro`). If not mounted, those checks show as **Unavailable** with setup instructions.
 
+> Interested in hardening your SSH server? Check out [ssh-audit-kit](https://github.com/deep-on/ssh-audit-kit) — SSH security audit, hardening, and reporting in a single shell script.
+
 ---
 
 ## Architecture
