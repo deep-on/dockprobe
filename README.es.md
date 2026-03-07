@@ -26,7 +26,7 @@
 
 DockProbe es un panel de monitoreo Docker autoalojado que se ejecuta como un único contenedor. Recopila en tiempo real métricas de CPU, memoria, red y disco de todos tus contenedores y de la máquina host — y muestra todo en una interfaz web limpia con tema oscuro.
 
-Cuando algo sale mal, DockProbe lo detecta automáticamente. Seis reglas integradas de detección de anomalías vigilan picos de CPU, desbordamientos de memoria, alertas de temperatura, presión de disco, reinicios inesperados y aumentos de red. Las alertas se envían instantáneamente por Telegram para que puedas responder antes de que los usuarios lo noten.
+Cuando algo sale mal, DockProbe lo detecta automáticamente. Seis reglas integradas de detección de anomalías vigilan picos de CPU, desbordamientos de memoria, alertas de temperatura, presión de disco, reinicios inesperados y aumentos de red. Las alertas se envían instantáneamente por Telegram para que puedas responder antes de que los usuarios lo noten. Además, un escáner de seguridad integrado ejecuta 16 verificaciones automatizadas cada 5 minutos — cubriendo errores de configuración de contenedores, exposición de red y endurecimiento del host — para detectar vulnerabilidades antes de que se conviertan en incidentes.
 
 No hay agentes que instalar en cada contenedor, ni base de datos externa, ni configuración compleja. Solo monta el socket de Docker, ejecuta un comando y tendrás visibilidad completa de tu entorno Docker en `https://localhost:9090`. ¿Necesitas acceso desde fuera de tu red? El soporte integrado de Cloudflare Tunnel ofrece HTTPS público seguro sin redirección de puertos.
 

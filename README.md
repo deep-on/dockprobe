@@ -26,7 +26,7 @@
 
 DockProbe is a self-hosted Docker monitoring dashboard that runs as a single container. It collects real-time CPU, memory, network, and disk metrics from all your containers and the host machine — then displays everything in a clean, dark-themed web UI.
 
-When something goes wrong, DockProbe detects it automatically. Six built-in anomaly detection rules watch for CPU spikes, memory overflows, temperature warnings, disk pressure, unexpected restarts, and network surges. Alerts are sent instantly to Telegram so you can respond before users notice.
+When something goes wrong, DockProbe detects it automatically. Six built-in anomaly detection rules watch for CPU spikes, memory overflows, temperature warnings, disk pressure, unexpected restarts, and network surges. Alerts are sent instantly to Telegram so you can respond before users notice. A built-in security scanner also runs 16 automated checks every 5 minutes — covering container misconfigurations, network exposure, and host-level hardening — so you can spot vulnerabilities before they become incidents.
 
 There's no agent to install on each container, no external database, no complex configuration. Just mount the Docker socket, run one command, and you have full visibility into your Docker environment at `https://localhost:9090`. Need access from outside your network? Built-in Cloudflare Tunnel support gives you secure public HTTPS with zero port-forwarding.
 
