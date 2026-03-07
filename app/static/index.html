@@ -20,6 +20,23 @@ header h1 span{color:var(--accent)}
 .alert-banner h3{color:var(--red);margin-bottom:4px;font-size:14px}
 .alert-banner ul{list-style:none;padding:0}
 .alert-banner li{color:var(--red);font-size:13px;padding:2px 0}
+.security-section{margin-bottom:16px}
+.security-section h2{font-size:15px;font-weight:600;cursor:pointer;user-select:none;padding:10px 0}
+.security-list{display:flex;flex-direction:column;gap:8px}
+.sec-item{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px}
+.sec-item.critical{border-left:3px solid var(--red)}
+.sec-item.warning{border-left:3px solid #d29922}
+.sec-item.info{border-left:3px solid var(--text2)}
+.sec-item.unavailable{border-left:3px solid #a371f7}
+.sec-badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-right:6px}
+.sec-badge.critical{background:#f8514922;color:var(--red)}
+.sec-badge.warning{background:#d2992222;color:#d29922}
+.sec-badge.info{background:#30363d44;color:var(--text2)}
+.sec-badge.unavailable{background:#a371f722;color:#a371f7}
+.sec-title{font-weight:600;font-size:13px}
+.sec-target{color:var(--accent);font-size:12px;margin:4px 0}
+.sec-desc{font-size:12px;color:var(--text2);margin-bottom:4px}
+.sec-rec{font-size:12px;color:var(--green);font-style:italic}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px}
 .card .label{color:var(--text2);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
@@ -155,6 +172,17 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
     <ul id="alertList"></ul>
   </div>
 
+  <div class="security-section" id="securitySection" style="display:none">
+    <h2 onclick="toggleSecurity()">
+      <span id="securityToggle">&#9654;</span> Security
+      <span id="securityBadges" style="font-weight:400;font-size:13px;margin-left:8px"></span>
+    </h2>
+    <div id="securityContent" style="display:none">
+      <div id="securityList" class="security-list"></div>
+      <div id="securityMeta" style="font-size:11px;color:var(--text2);margin-top:8px"></div>
+    </div>
+  </div>
+
   <div class="cards" id="hostCards"></div>
 
   <div class="section">
@@ -203,7 +231,7 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
   </div>
 
   <footer>
-    <div class="logo-text"><img src="/static/logo.png" alt="DeepOn" style="height:20px;vertical-align:middle;margin-right:6px;border-radius:4px">DockProbe</div>
+    <div class="logo-text"><img src="/static/logo.png" alt="DeepOn" style="height:20px;vertical-align:middle;margin-right:6px;border-radius:4px">DockProbe <span id="appVersion" style="font-size:11px;color:var(--border);font-weight:400"></span></div>
     <div id="ghStats" style="margin:8px 0"></div>
     <div>Powered by <a href="https://deep-on.com" target="_blank">DeepOn Inc.</a> &middot; <a href="https://github.com/deep-on/dockprobe" target="_blank">GitHub</a> &middot; MIT License</div>
     <div style="margin-top:4px;font-size:11px;color:var(--border)">Modifications must retain the DeepOn logo and "Powered by DeepOn Inc." attribution.</div>
@@ -289,6 +317,40 @@ function renderAnomalies(anomalies) {
   if (!anomalies || !anomalies.length) { banner.classList.remove('active'); return; }
   banner.classList.add('active');
   list.innerHTML = anomalies.map(a => `<li>• ${a.msg}</li>`).join('');
+}
+
+// ── Security section ──
+let _secExpanded = false;
+function toggleSecurity() {
+  _secExpanded = !_secExpanded;
+  document.getElementById('securityContent').style.display = _secExpanded ? 'block' : 'none';
+  document.getElementById('securityToggle').innerHTML = _secExpanded ? '&#9660;' : '&#9654;';
+}
+function escHtml(s) { return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
+function renderSecurity(security) {
+  const section = document.getElementById('securitySection');
+  if (!security || !security.warnings || !security.warnings.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  const sm = security.summary || {};
+  let bh = '';
+  if (sm.critical > 0) bh += `<span class="sec-badge critical">${sm.critical} Critical</span>`;
+  if (sm.warning > 0) bh += `<span class="sec-badge warning">${sm.warning} Warning</span>`;
+  if (sm.info > 0) bh += `<span class="sec-badge info">${sm.info} Info</span>`;
+  if (sm.unavailable > 0) bh += `<span class="sec-badge unavailable">${sm.unavailable} N/A</span>`;
+  document.getElementById('securityBadges').innerHTML = bh;
+  if (sm.critical > 0 && !_secExpanded) toggleSecurity();
+  const order = { critical: 0, warning: 1, info: 2, unavailable: 3 };
+  const sorted = [...security.warnings].sort((a, b) => (order[a.severity] ?? 9) - (order[b.severity] ?? 9));
+  document.getElementById('securityList').innerHTML = sorted.map(w => `
+    <div class="sec-item ${w.severity}">
+      <div><span class="sec-badge ${w.severity}">${w.severity === 'unavailable' ? 'N/A' : w.severity.toUpperCase()}</span><span class="sec-title">${escHtml(w.title)}</span></div>
+      <div class="sec-target">${escHtml(w.target)} &middot; ${escHtml(w.category)}</div>
+      <div class="sec-desc">${escHtml(w.description)}</div>
+      <div class="sec-rec">&#128161; ${escHtml(w.recommendation)}</div>
+    </div>
+  `).join('');
+  const meta = document.getElementById('securityMeta');
+  if (security.last_scan_ts) meta.textContent = 'Last scan: ' + fmtDateTime(security.last_scan_ts) + ' (scans every 5 min)';
 }
 
 function renderDisk(images) {
@@ -692,6 +754,7 @@ async function refresh() {
     window._lastContainers = cur.containers;
     renderContainers(cur.containers || []);
     renderAnomalies(cur.anomalies || []);
+    renderSecurity(cur.security || {});
     renderDisk(cur.images || {});
     renderAlertLog(alerts || []);
     updateCharts(cur.containers, cur.host);
@@ -847,6 +910,11 @@ function _applyRefreshInterval(seconds) {
   if (_refreshTimer) clearInterval(_refreshTimer);
   _refreshTimer = setInterval(refresh, seconds * 1000);
 }
+
+// Load version from health endpoint
+fetch('/api/health').then(r => r.json()).then(d => {
+  if (d.version) document.getElementById('appVersion').textContent = 'v' + d.version;
+}).catch(() => {});
 
 // Load initial refresh interval from server, then start
 fetch('/api/settings').then(r => r.json()).then(data => {

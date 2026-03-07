@@ -22,6 +22,7 @@ from app.alerting.telegram import send_alert
 from app.collectors.containers import collect_container_stats
 from app.collectors.host import collect_host_stats
 from app.collectors.images import collect_image_stats
+from app.security.scanner import scan as security_scan
 from app.storage.db import (
     cleanup_old_data,
     get_alerts,
@@ -63,6 +64,23 @@ async def _collection_loop() -> None:
                 except Exception as e:
                     logger.warning("Image stats collection failed: %s", e)
 
+            # Security scan every 30th cycle (~5 min)
+            security: dict[str, Any] = _latest.get("security", {})
+            if cycle % 30 == 0:
+                try:
+                    import aiodocker as _aio
+                    docker = _aio.Docker()
+                    try:
+                        scan_warnings = await security_scan(docker)
+                        summary = {"critical": 0, "warning": 0, "info": 0, "unavailable": 0, "total": len(scan_warnings)}
+                        for w in scan_warnings:
+                            summary[w["severity"]] = summary.get(w["severity"], 0) + 1
+                        security = {"warnings": scan_warnings, "summary": summary, "last_scan_ts": time.time()}
+                    finally:
+                        await docker.close()
+                except Exception as e:
+                    logger.warning("Security scan failed: %s", e)
+
             # Detect anomalies
             alerts = _detector.check(containers, host)
             for a in alerts:
@@ -74,6 +92,7 @@ async def _collection_loop() -> None:
                 "containers": containers,
                 "host": host,
                 "images": images,
+                "security": security,
                 "anomalies": _detector.active_anomalies,
                 "ts": time.time(),
             })
@@ -104,7 +123,9 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Docker Monitor", lifespan=lifespan)
+VERSION = (Path(__file__).resolve().parent.parent / "VERSION").read_text().strip()
+
+app = FastAPI(title="DockProbe", version=VERSION, lifespan=lifespan)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -291,7 +312,15 @@ async def static_file(filename: str):
 
 @app.get("/api/current")
 async def api_current():
-    return JSONResponse(_latest or {"containers": [], "host": {}, "images": {}, "anomalies": []})
+    return JSONResponse(_latest or {"containers": [], "host": {}, "images": {}, "anomalies": [], "security": {}})
+
+
+@app.get("/api/security")
+async def api_security():
+    security = _latest.get("security", {})
+    if not security:
+        return JSONResponse({"warnings": [], "summary": {"critical": 0, "warning": 0, "info": 0, "unavailable": 0, "total": 0}, "last_scan_ts": None})
+    return JSONResponse(security)
 
 
 @app.get("/api/history/{name}")
@@ -436,4 +465,4 @@ async def api_github_stats():
 
 @app.get("/api/health")
 async def api_health():
-    return {"status": "ok", "uptime_cycles": _latest.get("ts", 0)}
+    return {"status": "ok", "version": VERSION, "uptime_cycles": _latest.get("ts", 0)}
