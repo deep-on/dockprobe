@@ -62,6 +62,7 @@ Das war's. Der interaktive Installer konfiguriert Authentifizierung, Telegram-Be
 | **Anomalieerkennung** | 6 Regeln — CPU-Spitze, Speicherüberlauf, Hochtemperatur, Festplatte voll, Neustart, Netzwerk-Spitze |
 | **Telegram-Benachrichtigungen** | Sofortige Benachrichtigung mit 30-Min-Cooldown pro Alarmtyp |
 | **Sicherheit** | Basic Auth, Ratenlimitierung (5 Fehlversuche = 60s Sperre), HTTPS |
+| **Sicherheitsscanner** | 16 automatisierte Prüfungen (Container/Host/Netzwerk), 5-Min-Scan-Zyklus, Schweregrad-Badges |
 | **Sitzungsverwaltung** | Aktive Verbindungsverfolgung, konfigurierbare Max-Verbindungen, Live-IP-Anzeige |
 | **Passwortverwaltung** | Benutzername/Passwort über Dashboard-UI ändern |
 | **Einstellungs-UI** | Max-Verbindungen zur Laufzeit über das Dashboard anpassen |
@@ -95,6 +96,26 @@ Das war's. Der interaktive Installer konfiguriert Authentifizierung, Telegram-Be
 | Netzwerk-Spitze | RX 10-facher Anstieg + >100MB | Sofortiger Alarm |
 
 Alle Schwellenwerte sind über Umgebungsvariablen konfigurierbar.
+
+---
+
+## Sicherheitsscanner
+
+DockProbe führt alle 5 Minuten 16 automatisierte Sicherheitsprüfungen durch und zeigt die Ergebnisse in einem dedizierten Dashboard-Bereich mit Schweregrad-Badges an.
+
+| Kategorie | Prüfungen |
+|-----------|-----------|
+| **Container** (9) | Privilegierter Modus, Ausführung als Root, gefährliche Capabilities, Docker-Socket-Mount, sensible Pfad-Mounts, Nur-Lese-Rootfs, AppArmor/Seccomp deaktiviert, Geheimnisse in Umgebungsvariablen, keine Speicher-/CPU-Limits |
+| **Netzwerk** (3) | Host-Netzwerkmodus, übermäßige Port-Exposition, SSH-Port (22) freigegeben |
+| **Host** (4) | Docker-Daemon-Sicherheitsoptionen, Kernel-ASLR, IP-Weiterleitung, Linux Security Module Status |
+
+**Schweregrade:**
+- 🔴 **Kritisch** — Sofortiges Handeln erforderlich (z.B. privilegierter Modus, beschreibbarer Docker-Socket)
+- 🟡 **Warnung** — Sicherheitsverbesserung empfohlen
+- 🔵 **Info** — Informative Befunde
+- 🟣 **Nicht verfügbar** — Prüfung kann aufgrund von Umgebungseinschränkungen nicht ausgeführt werden; zeigt Aktivierungsanleitung
+
+> Host-Prüfungen erfordern Volume-Mounts (`/proc:/host_proc:ro`, `/sys:/host_sys:ro`). Ohne diese Mounts werden die betroffenen Prüfungen als **Nicht verfügbar** mit Einrichtungsanleitung angezeigt.
 
 ---
 

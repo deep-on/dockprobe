@@ -62,6 +62,7 @@ Eso es todo. El instalador interactivo configura la autenticación, alertas de T
 | **Detección de anomalías** | 6 reglas — pico de CPU, desbordamiento de memoria, alta temperatura, disco lleno, reinicio, pico de red |
 | **Alertas de Telegram** | Notificación instantánea con cooldown de 30 min por tipo de alerta |
 | **Seguridad** | Basic Auth, limitación de tasa (5 fallos = 60s de bloqueo), HTTPS |
+| **Escáner de seguridad** | 16 verificaciones automatizadas (contenedor/host/red), ciclo de escaneo de 5 min, insignias de severidad |
 | **Gestión de sesiones** | Seguimiento de conexiones activas, máx. conexiones configurable, visualización de IP en vivo |
 | **Gestión de contraseñas** | Cambiar usuario/contraseña desde la interfaz del panel |
 | **Interfaz de configuración** | Ajustar máx. conexiones en tiempo de ejecución desde el panel |
@@ -95,6 +96,26 @@ Eso es todo. El instalador interactivo configura la autenticación, alertas de T
 | Pico de red | RX aumento 10x + >100MB | Alerta inmediata |
 
 Todos los umbrales son configurables mediante variables de entorno.
+
+---
+
+## Escáner de seguridad
+
+DockProbe ejecuta 16 verificaciones de seguridad automatizadas cada 5 minutos y muestra los resultados en una sección dedicada del panel con insignias de severidad.
+
+| Categoría | Verificaciones |
+|-----------|---------------|
+| **Contenedor** (9) | Modo privilegiado, ejecución como root, capabilities peligrosas, montaje del socket Docker, montaje de rutas sensibles, rootfs de solo lectura, AppArmor/Seccomp deshabilitados, secretos en variables de entorno, sin límites de memoria/CPU |
+| **Red** (3) | Modo de red del host, exposición excesiva de puertos, exposición del puerto SSH (22) |
+| **Host** (4) | Opciones de seguridad del daemon Docker, ASLR del kernel, reenvío de IP, estado del Linux Security Module |
+
+**Niveles de severidad:**
+- 🔴 **Crítico** — Acción inmediata requerida (ej., modo privilegiado, socket Docker con escritura)
+- 🟡 **Advertencia** — Mejora de seguridad recomendada
+- 🔵 **Info** — Hallazgos informativos
+- 🟣 **No disponible** — La verificación no puede ejecutarse por restricciones del entorno; muestra cómo habilitarla
+
+> Las verificaciones a nivel de host requieren montajes de volumen (`/proc:/host_proc:ro`, `/sys:/host_sys:ro`). Si no están montados, esas verificaciones se muestran como **No disponible** con instrucciones de configuración.
 
 ---
 

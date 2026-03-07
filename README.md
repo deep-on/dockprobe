@@ -62,6 +62,7 @@ That's it. The interactive installer sets up authentication, Telegram alerts, an
 | **Anomaly Detection** | 6 rules — CPU spike, memory overflow, high temp, disk full, restart, network spike |
 | **Telegram Alerts** | Instant notification with 30-min cooldown per alert type |
 | **Security** | Basic Auth, rate limiting (5 fails = 60s lockout), HTTPS |
+| **Security Scanner** | 16 automated checks (container/host/network), 5-min scan cycle, severity badges |
 | **Session Management** | Active connection tracking, configurable max connections, live IP display |
 | **Password Management** | Change username/password via dashboard UI |
 | **Settings UI** | Adjust max connections at runtime from the dashboard |
@@ -95,6 +96,26 @@ That's it. The interactive installer sets up authentication, Telegram alerts, an
 | Network Spike | RX 10x surge + >100MB | Immediate alert |
 
 All thresholds are configurable via environment variables.
+
+---
+
+## Security Scanner
+
+DockProbe runs 16 automated security checks every 5 minutes and displays results in a dedicated dashboard section with severity badges.
+
+| Category | Checks |
+|----------|--------|
+| **Container** (9) | Privileged mode, running as root, dangerous capabilities, Docker socket mount, sensitive path mounts, read-only rootfs, AppArmor/Seccomp disabled, secrets in env vars, no memory/CPU limits |
+| **Network** (3) | Host network mode, excessive port exposure, SSH port (22) exposure |
+| **Host** (4) | Docker daemon security options, kernel ASLR, IP forwarding, Linux Security Module status |
+
+**Severity levels:**
+- 🔴 **Critical** — Immediate action required (e.g., privileged mode, writable Docker socket)
+- 🟡 **Warning** — Security improvement recommended
+- 🔵 **Info** — Informational findings
+- 🟣 **Unavailable** — Check cannot run due to environment constraints; shows how to enable it
+
+> Host-level checks require volume mounts (`/proc:/host_proc:ro`, `/sys:/host_sys:ro`). If not mounted, those checks show as **Unavailable** with setup instructions.
 
 ---
 

@@ -62,6 +62,7 @@ Tutto qui. L'installer interattivo configura l'autenticazione, gli avvisi Telegr
 | **Rilevamento anomalie** | 6 regole — picco CPU, overflow memoria, alta temperatura, disco pieno, riavvio, picco di rete |
 | **Avvisi Telegram** | Notifica istantanea con cooldown di 30 min per tipo di avviso |
 | **Sicurezza** | Basic Auth, limitazione di frequenza (5 tentativi falliti = 60s di blocco), HTTPS |
+| **Scanner di sicurezza** | 16 controlli automatizzati (container/host/rete), ciclo di scansione ogni 5 min, badge di severità |
 | **Gestione sessioni** | Tracciamento connessioni attive, max connessioni configurabile, visualizzazione IP in tempo reale |
 | **Gestione password** | Modifica utente/password dall'interfaccia della dashboard |
 | **Interfaccia impostazioni** | Regolare max connessioni a runtime dalla dashboard |
@@ -95,6 +96,26 @@ Tutto qui. L'installer interattivo configura l'autenticazione, gli avvisi Telegr
 | Picco di rete | RX aumento 10x + >100MB | Avviso immediato |
 
 Tutte le soglie sono configurabili tramite variabili d'ambiente.
+
+---
+
+## Scanner di sicurezza
+
+DockProbe esegue 16 controlli di sicurezza automatizzati ogni 5 minuti e visualizza i risultati in una sezione dedicata della dashboard con badge di severità.
+
+| Categoria | Controlli |
+|-----------|----------|
+| **Container** (9) | Modalità privilegiata, esecuzione come root, capability pericolose, mount del socket Docker, mount di percorsi sensibili, rootfs in sola lettura, AppArmor/Seccomp disabilitati, segreti nelle variabili d'ambiente, nessun limite di memoria/CPU |
+| **Rete** (3) | Modalità rete host, esposizione eccessiva di porte, esposizione della porta SSH (22) |
+| **Host** (4) | Opzioni di sicurezza del daemon Docker, ASLR del kernel, inoltro IP, stato del Linux Security Module |
+
+**Livelli di severità:**
+- 🔴 **Critico** — Azione immediata richiesta (es. modalità privilegiata, socket Docker scrivibile)
+- 🟡 **Avvertimento** — Miglioramento della sicurezza consigliato
+- 🔵 **Info** — Risultati informativi
+- 🟣 **Non disponibile** — Il controllo non può essere eseguito a causa di vincoli ambientali; mostra come abilitarlo
+
+> I controlli a livello host richiedono mount di volumi (`/proc:/host_proc:ro`, `/sys:/host_sys:ro`). Se non montati, quei controlli vengono mostrati come **Non disponibile** con le istruzioni di configurazione.
 
 ---
 

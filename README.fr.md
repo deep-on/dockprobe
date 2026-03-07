@@ -62,6 +62,7 @@ C'est tout. L'installateur interactif configure l'authentification, les alertes 
 | **Détection d'anomalies** | 6 règles — pic CPU, dépassement mémoire, haute température, disque plein, redémarrage, pic réseau |
 | **Alertes Telegram** | Notification instantanée avec cooldown de 30 min par type d'alerte |
 | **Sécurité** | Basic Auth, limitation de débit (5 échecs = 60s de blocage), HTTPS |
+| **Scanner de sécurité** | 16 vérifications automatisées (conteneur/hôte/réseau), cycle d'analyse de 5 min, badges de sévérité |
 | **Gestion des sessions** | Suivi des connexions actives, max connexions configurable, affichage IP en direct |
 | **Gestion des mots de passe** | Changement nom d'utilisateur/mot de passe via l'interface |
 | **Interface de réglages** | Ajuster le max de connexions à la volée depuis le tableau de bord |
@@ -95,6 +96,26 @@ C'est tout. L'installateur interactif configure l'authentification, les alertes 
 | Pic réseau | RX augmentation 10x + >100Mo | Alerte immédiate |
 
 Tous les seuils sont configurables via les variables d'environnement.
+
+---
+
+## Scanner de sécurité
+
+DockProbe exécute 16 vérifications de sécurité automatisées toutes les 5 minutes et affiche les résultats dans une section dédiée du tableau de bord avec des badges de sévérité.
+
+| Catégorie | Vérifications |
+|-----------|--------------|
+| **Conteneur** (9) | Mode privilégié, exécution en root, capabilities dangereuses, montage du socket Docker, montage de chemins sensibles, rootfs en lecture seule, AppArmor/Seccomp désactivés, secrets dans les variables d'environnement, pas de limites mémoire/CPU |
+| **Réseau** (3) | Mode réseau hôte, exposition excessive de ports, exposition du port SSH (22) |
+| **Hôte** (4) | Options de sécurité du daemon Docker, ASLR du noyau, transfert IP, état du Linux Security Module |
+
+**Niveaux de sévérité :**
+- 🔴 **Critique** — Action immédiate requise (ex. : mode privilégié, socket Docker accessible en écriture)
+- 🟡 **Avertissement** — Amélioration de sécurité recommandée
+- 🔵 **Info** — Constatations informatives
+- 🟣 **Indisponible** — La vérification ne peut pas s'exécuter en raison de contraintes d'environnement ; indique comment l'activer
+
+> Les vérifications au niveau de l'hôte nécessitent des montages de volumes (`/proc:/host_proc:ro`, `/sys:/host_sys:ro`). Sans ces montages, les vérifications concernées s'affichent comme **Indisponible** avec les instructions de configuration.
 
 ---
 

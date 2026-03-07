@@ -62,6 +62,7 @@ git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash insta
 | **Detecção de anomalias** | 6 regras — pico de CPU, estouro de memória, alta temperatura, disco cheio, reinício, pico de rede |
 | **Alertas Telegram** | Notificação instantânea com cooldown de 30 min por tipo de alerta |
 | **Segurança** | Basic Auth, limitação de taxa (5 falhas = 60s de bloqueio), HTTPS |
+| **Scanner de segurança** | 16 verificações automatizadas (contêiner/host/rede), ciclo de varredura de 5 min, badges de severidade |
 | **Gestão de sessões** | Rastreamento de conexões ativas, máx. conexões configurável, exibição de IP ao vivo |
 | **Gestão de senhas** | Alterar usuário/senha pela interface do painel |
 | **Interface de configurações** | Ajustar máx. conexões em tempo de execução pelo painel |
@@ -95,6 +96,26 @@ git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash insta
 | Pico de rede | RX aumento de 10x + >100MB | Alerta imediato |
 
 Todos os limites são configuráveis via variáveis de ambiente.
+
+---
+
+## Scanner de segurança
+
+O DockProbe executa 16 verificações de segurança automatizadas a cada 5 minutos e exibe os resultados em uma seção dedicada do painel com badges de severidade.
+
+| Categoria | Verificações |
+|-----------|-------------|
+| **Contêiner** (9) | Modo privilegiado, execução como root, capabilities perigosas, montagem do socket Docker, montagem de caminhos sensíveis, rootfs somente leitura, AppArmor/Seccomp desabilitados, segredos em variáveis de ambiente, sem limites de memória/CPU |
+| **Rede** (3) | Modo de rede do host, exposição excessiva de portas, exposição da porta SSH (22) |
+| **Host** (4) | Opções de segurança do daemon Docker, ASLR do kernel, encaminhamento de IP, estado do Linux Security Module |
+
+**Níveis de severidade:**
+- 🔴 **Crítico** — Ação imediata necessária (ex.: modo privilegiado, socket Docker com escrita)
+- 🟡 **Aviso** — Melhoria de segurança recomendada
+- 🔵 **Info** — Descobertas informativas
+- 🟣 **Indisponível** — A verificação não pode ser executada devido a restrições do ambiente; mostra como habilitá-la
+
+> As verificações a nível de host requerem montagens de volume (`/proc:/host_proc:ro`, `/sys:/host_sys:ro`). Se não montados, essas verificações são exibidas como **Indisponível** com instruções de configuração.
 
 ---
 
