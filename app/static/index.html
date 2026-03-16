@@ -223,6 +223,11 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
   </div>
 
   <div class="section">
+    <h2>Docker Memory Usage</h2>
+    <div class="disk-grid" id="dockerMemGrid"></div>
+  </div>
+
+  <div class="section">
     <h2>Alert History (24h)</h2>
     <div class="alert-log" id="alertLog">
       <table><thead><tr><th>Time</th><th>Type</th><th>Target</th><th>Message</th></tr></thead>
@@ -383,6 +388,28 @@ function renderDisk(images) {
     <div class="disk-item"><div class="size">${fmt(images.cache_size)}</div><div class="dlabel">Build Cache</div></div>
     <div class="disk-item"><div class="size">${fmt(images.volume_size)}</div><div class="dlabel">Volumes (${images.volume_count})</div></div>
     <div class="disk-item"><div class="size">${fmt(images.container_rw_size)}</div><div class="dlabel">Container RW</div></div>
+  `;
+}
+
+function renderDockerMem(containers, host) {
+  const el = document.getElementById('dockerMemGrid');
+  const running = (containers || []).filter(c => c.status === 'running');
+  if (!running.length) { el.innerHTML = '<div class="disk-item"><div class="dlabel">No running containers</div></div>'; return; }
+  const totalActive = running.reduce((s, c) => s + (c.mem_usage || 0), 0);
+  const totalCache = running.reduce((s, c) => s + (c.mem_cache || 0), 0);
+  const totalSwap = running.reduce((s, c) => s + (c.mem_swap || 0), 0);
+  const totalUsed = totalActive + totalCache;
+  const hostTotal = (host && host.memory) ? host.memory.total : 0;
+  const hostPct = hostTotal > 0 ? (totalUsed / hostTotal * 100).toFixed(1) : 'N/A';
+  const hostColor = hostPct > 80 ? 'var(--red)' : hostPct > 50 ? 'var(--yellow)' : 'var(--green)';
+  const noLimit = running.filter(c => !c.mem_limit || c.mem_limit > 100 * 1024 * 1024 * 1024).length;
+  el.innerHTML = `
+    <div class="disk-item"><div class="size">${fmt(totalUsed)}</div><div class="dlabel">Total (${running.length} containers)</div></div>
+    <div class="disk-item"><div class="size">${fmt(totalActive)}</div><div class="dlabel">Active (excl. cache)</div></div>
+    <div class="disk-item"><div class="size">${fmt(totalCache)}</div><div class="dlabel">Cache</div></div>
+    <div class="disk-item"><div class="size">${fmt(totalSwap)}</div><div class="dlabel">Swap</div></div>
+    <div class="disk-item"><div class="size" style="color:${hostColor}">${hostPct}%</div><div class="dlabel">of Host RAM (${hostTotal ? fmt(hostTotal) : 'N/A'})</div></div>
+    <div class="disk-item"><div class="size" style="color:${noLimit > 0 ? 'var(--yellow)' : 'var(--green)'}">${noLimit}</div><div class="dlabel">No Memory Limit</div></div>
   `;
 }
 
@@ -778,6 +805,7 @@ async function refresh() {
     renderAnomalies(cur.anomalies || []);
     renderSecurity(cur.security || {});
     renderDisk(cur.images || {});
+    renderDockerMem(cur.containers, cur.host);
     renderAlertLog(alerts || []);
     updateCharts(cur.containers, cur.host);
   } catch (e) {

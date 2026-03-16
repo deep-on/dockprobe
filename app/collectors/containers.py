@@ -42,7 +42,7 @@ async def _get_one_stat(container: aiodocker.docker.DockerContainer) -> dict[str
     stats = stats_result[0] if isinstance(stats_result, list) else stats_result
 
     cpu_pct = _calc_cpu_percent_oneshot(stats)
-    mem_usage, mem_limit, mem_pct = _calc_mem(stats)
+    mem_usage, mem_limit, mem_pct, mem_cache, mem_swap = _calc_mem(stats)
     net_rx, net_tx = _calc_net(stats)
     blk_read, blk_write = _calc_blkio(stats)
 
@@ -57,6 +57,8 @@ async def _get_one_stat(container: aiodocker.docker.DockerContainer) -> dict[str
         "mem_usage": mem_usage,
         "mem_limit": mem_limit,
         "mem_pct": round(mem_pct, 2),
+        "mem_cache": mem_cache,
+        "mem_swap": mem_swap,
         "net_rx": net_rx,
         "net_tx": net_tx,
         "blk_read": blk_read,
@@ -69,7 +71,7 @@ def _empty_stat(name: str, state: dict, restart_count: int) -> dict[str, Any]:
     return {
         "name": name, "id": "", "image": "", "status": state.get("Status", "unknown"),
         "started_at": "", "restart_count": restart_count,
-        "cpu_pct": 0.0, "mem_usage": 0, "mem_limit": 0, "mem_pct": 0.0,
+        "cpu_pct": 0.0, "mem_usage": 0, "mem_limit": 0, "mem_pct": 0.0, "mem_cache": 0, "mem_swap": 0,
         "net_rx": 0, "net_tx": 0, "blk_read": 0, "blk_write": 0,
         "ts": time.time(),
     }
@@ -95,14 +97,18 @@ def _calc_cpu_percent_oneshot(stats: dict) -> float:
     return 0.0
 
 
-def _calc_mem(stats: dict) -> tuple[int, int, float]:
+def _calc_mem(stats: dict) -> tuple[int, int, float, int, int]:
     mem = stats.get("memory_stats", {})
-    usage = mem.get("usage", 0) - mem.get("stats", {}).get("cache", 0)
+    raw_usage = mem.get("usage", 0)
+    cache = mem.get("stats", {}).get("cache", 0)
+    usage = raw_usage - cache
     if usage < 0:
-        usage = mem.get("usage", 0)
+        usage = raw_usage
+        cache = 0
     limit = mem.get("limit", 0)
     pct = (usage / limit * 100.0) if limit > 0 else 0.0
-    return usage, limit, pct
+    swap = mem.get("stats", {}).get("swap", 0)
+    return usage, limit, pct, cache, swap
 
 
 def _calc_net(stats: dict) -> tuple[int, int]:
