@@ -276,7 +276,7 @@ docker compose up -d --build
 
 ## ライセンス
 
-MIT License — [LICENSE](LICENSE) を参照
+Apache License 2.0 — [LICENSE](LICENSE) を参照
 
 **帰属条件:** 修正・再配布版にはDeepOnロゴと「Powered by DeepOn Inc.」の表記をUIに保持する必要があります。
 

@@ -12,6 +12,7 @@ def collect_host_stats() -> dict[str, Any]:
         "cpu_temp": _cpu_temp(),
         "gpu_temp": _gpu_temp(),
         "disk": _disk_usage(),
+        "memory": _memory_usage(),
         "load_avg": _load_avg(),
         "cpu_cores": os.cpu_count() or 1,
         "cpu_pct": _cpu_percent(),
@@ -108,6 +109,33 @@ def _disk_usage() -> list[dict[str, Any]]:
     except OSError:
         pass
     return disks
+
+
+def _memory_usage() -> dict[str, Any] | None:
+    """Read host memory usage from /proc/meminfo."""
+    for path in ("/host_proc/meminfo", "/proc/meminfo"):
+        try:
+            info: dict[str, int] = {}
+            with open(path) as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) >= 2 and parts[0].rstrip(":") in (
+                        "MemTotal", "MemAvailable", "Buffers", "Cached", "MemFree",
+                    ):
+                        info[parts[0].rstrip(":")] = int(parts[1]) * 1024  # kB -> bytes
+            total = info.get("MemTotal", 0)
+            if total <= 0:
+                continue
+            available = info.get("MemAvailable")
+            if available is not None:
+                used = total - available
+            else:
+                used = total - info.get("MemFree", 0) - info.get("Buffers", 0) - info.get("Cached", 0)
+            pct = round(used / total * 100, 1) if total > 0 else 0.0
+            return {"total": total, "used": used, "available": total - used, "pct": pct}
+        except (OSError, ValueError):
+            continue
+    return None
 
 
 def _load_avg() -> list[float]:

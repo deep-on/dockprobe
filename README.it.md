@@ -276,7 +276,7 @@ docker compose up -d --build
 
 ## Licenza
 
-MIT License — vedi [LICENSE](LICENSE)
+Apache License 2.0 — vedi [LICENSE](LICENSE)
 
 **Attribuzione:** Le versioni modificate o ridistribuite devono mantenere il logo DeepOn e l'avviso "Powered by DeepOn Inc." nell'interfaccia.
 

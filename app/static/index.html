@@ -233,7 +233,7 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
   <footer>
     <div class="logo-text"><img src="/static/logo.png" alt="DeepOn" style="height:20px;vertical-align:middle;margin-right:6px;border-radius:4px">DockProbe <span id="appVersion" style="font-size:11px;color:var(--border);font-weight:400"></span></div>
     <div id="ghStats" style="margin:8px 0"></div>
-    <div>Powered by <a href="https://deep-on.com" target="_blank">DeepOn Inc.</a> &middot; <a href="https://github.com/deep-on/dockprobe" target="_blank">GitHub</a> &middot; MIT License</div>
+    <div>Powered by <a href="https://deep-on.com" target="_blank">DeepOn Inc.</a> &middot; <a href="https://github.com/deep-on/dockprobe" target="_blank">GitHub</a> &middot; Apache-2.0</div>
     <div style="margin-top:4px;font-size:11px;color:var(--border)">Modifications must retain the DeepOn logo and "Powered by DeepOn Inc." attribution.</div>
   </footer>
 </div>
@@ -269,14 +269,17 @@ function renderHostCards(host) {
   const el = document.getElementById('hostCards');
   if (!host || !host.ts) { el.innerHTML = '<div class="card"><div class="label">Status</div><div class="value">-</div></div>'; return; }
   const disk = (host.disk && host.disk[0]) || {};
+  const mem = host.memory || {};
   const load = host.load_avg || [0,0,0];
   const cores = host.cpu_cores || 1;
   const cpuPct = host.cpu_pct;
   const cpuColor = cpuPct > 80 ? 'var(--red)' : cpuPct > 50 ? 'var(--yellow)' : 'var(--green)';
+  const memColor = mem.pct > 90 ? 'var(--red)' : mem.pct > 70 ? 'var(--yellow)' : 'var(--green)';
   const loadPct = Math.round(load[0] / cores * 100);
   const loadColor = loadPct > 100 ? 'var(--red)' : loadPct > 70 ? 'var(--yellow)' : 'var(--green)';
   el.innerHTML = `
     <div class="card" title="호스트 전체 CPU 사용률 (usr+sys)&#10;컨테이너 + 호스트 프로세스 포함"><div class="label">Host CPU</div><div class="value" style="color:${cpuColor}">${cpuPct != null ? cpuPct + '%' : 'N/A'}</div><div class="sub">${cores} cores</div></div>
+    <div class="card" title="호스트 전체 RAM 사용량&#10;used / total"><div class="label">Host Memory</div><div class="value" style="color:${memColor}">${mem.pct != null ? mem.pct + '%' : 'N/A'}</div><div class="sub">${mem.total ? fmt(mem.used) + ' / ' + fmt(mem.total) : ''}</div></div>
     <div class="card"><div class="label">CPU Temp</div><div class="value" style="color:${host.cpu_temp > 85 ? 'var(--red)' : host.cpu_temp > 70 ? 'var(--yellow)' : 'var(--green)'}">${host.cpu_temp != null ? host.cpu_temp + '°C' : 'N/A'}</div></div>
     <div class="card"><div class="label">GPU Temp</div><div class="value" style="color:${host.gpu_temp > 85 ? 'var(--red)' : host.gpu_temp > 70 ? 'var(--yellow)' : 'var(--green)'}">${host.gpu_temp != null ? host.gpu_temp + '°C' : 'N/A'}</div></div>
     <div class="card"><div class="label">Disk /</div><div class="value" style="color:${disk.pct > 90 ? 'var(--red)' : disk.pct > 80 ? 'var(--yellow)' : 'var(--text)'}">${disk.pct != null ? disk.pct + '%' : 'N/A'}</div><div class="sub">${fmt(disk.used)} / ${fmt(disk.total)}</div></div>
@@ -294,6 +297,15 @@ function renderContainers(containers) {
     return sortDir * ((va || 0) - (vb || 0));
   });
 
+  const running = sorted.filter(c => c.status === 'running');
+  const totalCpu = running.reduce((s, c) => s + (c.cpu_pct || 0), 0);
+  const totalMem = running.reduce((s, c) => s + (c.mem_usage || 0), 0);
+  const totalNetRx = running.reduce((s, c) => s + (c.net_rx || 0), 0);
+  const totalNetTx = running.reduce((s, c) => s + (c.net_tx || 0), 0);
+  const totalBlkR = running.reduce((s, c) => s + (c.blk_read || 0), 0);
+  const totalBlkW = running.reduce((s, c) => s + (c.blk_write || 0), 0);
+  const totalRestart = sorted.reduce((s, c) => s + (c.restart_count || 0), 0);
+
   tbody.innerHTML = sorted.map(c => {
     const cpuCls = c.cpu_pct > 80 ? ' cpu-high' : '';
     const memCls = c.mem_pct > 90 ? ' mem-high' : '';
@@ -308,7 +320,17 @@ function renderContainers(containers) {
       <td>${fmt(c.blk_write)}</td>
       <td>${c.restart_count}</td>
     </tr>`;
-  }).join('');
+  }).join('') + `<tr style="border-top:2px solid var(--border);font-weight:600;color:var(--text2)">
+      <td>Total (${running.length} running)</td>
+      <td></td>
+      <td>${totalCpu.toFixed(1)}%</td>
+      <td>${fmt(totalMem)}</td>
+      <td>${fmt(totalNetRx)}</td>
+      <td>${fmt(totalNetTx)}</td>
+      <td>${fmt(totalBlkR)}</td>
+      <td>${fmt(totalBlkW)}</td>
+      <td>${totalRestart}</td>
+    </tr>`;
 }
 
 function renderAnomalies(anomalies) {
