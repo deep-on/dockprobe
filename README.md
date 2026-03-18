@@ -20,6 +20,10 @@
   <img src="https://img.shields.io/badge/dependencies-4_only-brightgreen" alt="Deps">
 </p>
 
+<p align="center">
+  <a href="https://www.youtube.com/shorts/SqKSEtiyYzM">▶ Watch 60-second demo on YouTube</a>
+</p>
+
 ---
 
 ## What is DockProbe?
