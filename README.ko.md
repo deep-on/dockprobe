@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/license-Apache_2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/python-3.12-green" alt="Python">
   <img src="https://img.shields.io/badge/docker-compose-blue" alt="Docker">
   <img src="https://img.shields.io/badge/dependencies-4_only-brightgreen" alt="Deps">
@@ -58,8 +58,8 @@ git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash insta
 |---------|------|
 | **실시간 대시보드** | 다크 테마 웹 UI, 10초 자동 갱신, 정렬 가능한 테이블, Chart.js 차트 |
 | **컨테이너 모니터링** | CPU %, 메모리 %, 네트워크 I/O, 블록 I/O, 재시작 횟수 |
-| **호스트 모니터링** | CPU/GPU 온도, 디스크 사용량, 로드 평균 |
-| **이상 탐지** | 6가지 규칙 — CPU 폭주, 메모리 초과, 고온, 디스크 부족, 재시작, 네트워크 스파이크 |
+| **호스트 모니터링** | CPU/GPU 온도 및 사용률, 메모리 사용량, 디스크 사용량, 로드 평균 |
+| **이상 탐지** | 6가지 규칙 + 권장 조치 안내 — CPU 폭주, 메모리 초과, 고온, 디스크 부족, 재시작, 네트워크 스파이크 |
 | **텔레그램 알림** | 즉시 알림 + 알림 유형별 30분 쿨다운 |
 | **보안** | Basic Auth, 레이트 리밋 (5회 실패 시 60초 차단), HTTPS |
 | **보안 스캐너** | 16가지 자동 점검 (컨테이너/호스트/네트워크), 5분 주기 스캔, 심각도 배지 |
@@ -76,9 +76,9 @@ git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash insta
 | 섹션 | 내용 |
 |------|------|
 | 세션 바 | 로그인 사용자, IP, 활성 접속 수 / 최대 제한 |
-| 호스트 카드 | CPU 온도, GPU 온도, 디스크 %, 로드 평균 |
+| 호스트 카드 | CPU 온도, GPU 온도, CPU/GPU %, 호스트 메모리, 디스크 %, 로드 평균 |
 | 컨테이너 테이블 | CPU/메모리/네트워크 기준 정렬, 이상 시 빨간색 표시 |
-| 차트 (4개) | 컨테이너 CPU·메모리 추이, 호스트 온도·로드 |
+| 차트 (5개) | 컨테이너 CPU·메모리 추이, 호스트 CPU/GPU %, 호스트 온도·로드 |
 | Docker 디스크 | 이미지, 빌드 캐시, 볼륨, 컨테이너 RW 레이어 |
 | 알림 이력 | 최근 24시간 타임스탬프 포함 |
 

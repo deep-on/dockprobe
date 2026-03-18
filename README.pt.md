@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/license-Apache_2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/python-3.12-green" alt="Python">
   <img src="https://img.shields.io/badge/docker-compose-blue" alt="Docker">
   <img src="https://img.shields.io/badge/dependencies-4_only-brightgreen" alt="Deps">
@@ -58,8 +58,8 @@ git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash insta
 |-----------|-----------------|
 | **Painel em tempo real** | Interface web escura, atualização automática a cada 10s, tabelas ordenáveis, gráficos Chart.js |
 | **Monitoramento de contêineres** | CPU %, memória %, E/S de rede, E/S de bloco, contador de reinícios |
-| **Monitoramento do host** | Temperatura CPU/GPU, uso de disco, média de carga |
-| **Detecção de anomalias** | 6 regras — pico de CPU, estouro de memória, alta temperatura, disco cheio, reinício, pico de rede |
+| **Monitoramento do host** | Temperatura e utilização CPU/GPU, memória, uso de disco, média de carga |
+| **Detecção de anomalias** | 6 regras com ações recomendadas — pico de CPU, estouro de memória, alta temperatura, disco cheio, reinício, pico de rede |
 | **Alertas Telegram** | Notificação instantânea com cooldown de 30 min por tipo de alerta |
 | **Segurança** | Basic Auth, limitação de taxa (5 falhas = 60s de bloqueio), HTTPS |
 | **Scanner de segurança** | 16 verificações automatizadas (contêiner/host/rede), ciclo de varredura de 5 min, badges de severidade |
@@ -76,9 +76,9 @@ git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash insta
 | Seção | Detalhes |
 |-------|---------|
 | Barra de sessão | Usuário conectado, IP, conexões ativas / limite máximo |
-| Cartões do host | Temp CPU, temp GPU, disco %, média de carga |
+| Cartões do host | Temp CPU, temp GPU, CPU/GPU %, memória do host, disco %, média de carga |
 | Tabela de contêineres | Ordenável por CPU/memória/rede, anomalias com código de cores |
-| Gráficos (4) | Tendências de CPU e memória dos contêineres, temperatura e carga do host |
+| Gráficos (5) | Tendências de CPU e memória dos contêineres, CPU/GPU % do host, temperatura e carga do host |
 | Disco Docker | Imagens, cache de build, volumes, camadas RW dos contêineres |
 | Histórico de alertas | Últimas 24h com timestamps |
 

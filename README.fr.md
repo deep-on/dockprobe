@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/license-Apache_2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/python-3.12-green" alt="Python">
   <img src="https://img.shields.io/badge/docker-compose-blue" alt="Docker">
   <img src="https://img.shields.io/badge/dependencies-4_only-brightgreen" alt="Deps">
@@ -58,8 +58,8 @@ C'est tout. L'installateur interactif configure l'authentification, les alertes 
 |-----------|-------------------|
 | **Tableau de bord en temps réel** | Interface web sombre, actualisation auto 10s, tableaux triables, graphiques Chart.js |
 | **Surveillance des conteneurs** | CPU %, mémoire %, E/S réseau, E/S bloc, compteur de redémarrages |
-| **Surveillance de l'hôte** | Température CPU/GPU, utilisation disque, charge moyenne |
-| **Détection d'anomalies** | 6 règles — pic CPU, dépassement mémoire, haute température, disque plein, redémarrage, pic réseau |
+| **Surveillance de l'hôte** | Température et utilisation CPU/GPU, mémoire, utilisation disque, charge moyenne |
+| **Détection d'anomalies** | 6 règles avec actions recommandées — pic CPU, dépassement mémoire, haute température, disque plein, redémarrage, pic réseau |
 | **Alertes Telegram** | Notification instantanée avec cooldown de 30 min par type d'alerte |
 | **Sécurité** | Basic Auth, limitation de débit (5 échecs = 60s de blocage), HTTPS |
 | **Scanner de sécurité** | 16 vérifications automatisées (conteneur/hôte/réseau), cycle d'analyse de 5 min, badges de sévérité |
@@ -76,9 +76,9 @@ C'est tout. L'installateur interactif configure l'authentification, les alertes 
 | Section | Détails |
 |---------|---------|
 | Barre de session | Utilisateur connecté, IP, connexions actives / limite max |
-| Cartes hôte | Temp CPU, temp GPU, disque %, charge moyenne |
+| Cartes hôte | Temp CPU, temp GPU, CPU/GPU %, mémoire hôte, disque %, charge moyenne |
 | Table des conteneurs | Triable par CPU/mémoire/réseau, anomalies colorées |
-| Graphiques (4) | Tendances CPU & mémoire des conteneurs, température & charge de l'hôte |
+| Graphiques (5) | Tendances CPU & mémoire des conteneurs, CPU/GPU % de l'hôte, température & charge de l'hôte |
 | Disque Docker | Images, cache de build, volumes, couches RW des conteneurs |
 | Historique des alertes | Dernières 24h avec horodatages |
 

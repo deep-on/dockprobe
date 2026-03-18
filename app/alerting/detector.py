@@ -42,7 +42,8 @@ class AnomalyDetector:
             if self._cpu_counts.get(name, 0) >= config.CPU_CONSECUTIVE:
                 a = {"type": "cpu_high", "target": name,
                      "value": c["cpu_pct"], "ts": now,
-                     "msg": f"Container {name} CPU {c['cpu_pct']:.1f}% (>{config.CPU_THRESHOLD}% x{config.CPU_CONSECUTIVE})"}
+                     "msg": f"Container {name} CPU {c['cpu_pct']:.1f}% (>{config.CPU_THRESHOLD}% x{config.CPU_CONSECUTIVE})",
+                     "rec": f"docker stats {name} | docker restart {name} | Set CPU limit: docker update --cpus=2 {name}"}
                 alerts.append(a)
                 self.active_anomalies.append(a)
 
@@ -50,7 +51,8 @@ class AnomalyDetector:
             if c["mem_pct"] > config.MEM_THRESHOLD:
                 a = {"type": "mem_high", "target": name,
                      "value": c["mem_pct"], "ts": now,
-                     "msg": f"Container {name} Memory {c['mem_pct']:.1f}% (>{config.MEM_THRESHOLD}%)"}
+                     "msg": f"Container {name} Memory {c['mem_pct']:.1f}% (>{config.MEM_THRESHOLD}%)",
+                     "rec": f"docker stats {name} | docker restart {name} | Set memory limit: docker update --memory=2g {name}"}
                 alerts.append(a)
                 self.active_anomalies.append(a)
 
@@ -60,7 +62,8 @@ class AnomalyDetector:
             if prev is not None and cur > prev:
                 a = {"type": "restart", "target": name,
                      "value": cur, "ts": now,
-                     "msg": f"Container {name} restarted (count {prev} -> {cur})"}
+                     "msg": f"Container {name} restarted (count {prev} -> {cur})",
+                     "rec": f"docker logs --tail 50 {name} | Check healthcheck config | docker inspect {name}"}
                 alerts.append(a)
                 self.active_anomalies.append(a)
             self._prev_restarts[name] = cur
@@ -72,7 +75,8 @@ class AnomalyDetector:
                 if cur_rx > prev_rx * config.NET_SPIKE_MULTIPLIER and cur_rx > config.NET_SPIKE_MIN_BYTES:
                     a = {"type": "net_spike", "target": name,
                          "value": cur_rx, "ts": now,
-                         "msg": f"Container {name} Network RX spike: {_fmt_bytes(prev_rx)} -> {_fmt_bytes(cur_rx)}"}
+                         "msg": f"Container {name} Network RX spike: {_fmt_bytes(prev_rx)} -> {_fmt_bytes(cur_rx)}",
+                         "rec": f"docker logs --tail 50 {name} | Check for DDoS or unexpected traffic | Consider network rate limiting"}
                     alerts.append(a)
                     self.active_anomalies.append(a)
             self._prev_net_rx[name] = cur_rx
@@ -82,7 +86,8 @@ class AnomalyDetector:
         if cpu_temp is not None and cpu_temp > config.HOST_TEMP_THRESHOLD:
             a = {"type": "host_temp", "target": "host",
                  "value": cpu_temp, "ts": now,
-                 "msg": f"Host CPU temperature {cpu_temp}°C (>{config.HOST_TEMP_THRESHOLD}°C)"}
+                 "msg": f"Host CPU temperature {cpu_temp}°C (>{config.HOST_TEMP_THRESHOLD}°C)",
+                 "rec": "Check fan/cooling system | Reduce workload | sensors -u for details"}
             alerts.append(a)
             self.active_anomalies.append(a)
 
@@ -91,7 +96,8 @@ class AnomalyDetector:
             if d["pct"] > config.DISK_THRESHOLD:
                 a = {"type": "disk_high", "target": d["mount"],
                      "value": d["pct"], "ts": now,
-                     "msg": f"Host disk {d['mount']} usage {d['pct']:.1f}% (>{config.DISK_THRESHOLD}%)"}
+                     "msg": f"Host disk {d['mount']} usage {d['pct']:.1f}% (>{config.DISK_THRESHOLD}%)",
+                     "rec": "docker system prune -f | docker builder prune -f | docker image prune -a | Remove unused volumes: docker volume prune"}
                 alerts.append(a)
                 self.active_anomalies.append(a)
 

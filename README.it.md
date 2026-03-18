@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/license-Apache_2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/python-3.12-green" alt="Python">
   <img src="https://img.shields.io/badge/docker-compose-blue" alt="Docker">
   <img src="https://img.shields.io/badge/dependencies-4_only-brightgreen" alt="Deps">
@@ -58,8 +58,8 @@ Tutto qui. L'installer interattivo configura l'autenticazione, gli avvisi Telegr
 |-----------|-------------|
 | **Dashboard in tempo reale** | Interfaccia web scura, aggiornamento automatico ogni 10s, tabelle ordinabili, grafici Chart.js |
 | **Monitoraggio container** | CPU %, memoria %, I/O di rete, I/O di blocco, contatore riavvii |
-| **Monitoraggio host** | Temperatura CPU/GPU, utilizzo disco, media di carico |
-| **Rilevamento anomalie** | 6 regole — picco CPU, overflow memoria, alta temperatura, disco pieno, riavvio, picco di rete |
+| **Monitoraggio host** | Temperatura e utilizzo CPU/GPU, memoria, utilizzo disco, media di carico |
+| **Rilevamento anomalie** | 6 regole con azioni consigliate — picco CPU, overflow memoria, alta temperatura, disco pieno, riavvio, picco di rete |
 | **Avvisi Telegram** | Notifica istantanea con cooldown di 30 min per tipo di avviso |
 | **Sicurezza** | Basic Auth, limitazione di frequenza (5 tentativi falliti = 60s di blocco), HTTPS |
 | **Scanner di sicurezza** | 16 controlli automatizzati (container/host/rete), ciclo di scansione ogni 5 min, badge di severità |
@@ -76,9 +76,9 @@ Tutto qui. L'installer interattivo configura l'autenticazione, gli avvisi Telegr
 | Sezione | Dettagli |
 |---------|---------|
 | Barra sessione | Utente connesso, IP, connessioni attive / limite massimo |
-| Schede host | Temp CPU, temp GPU, disco %, media di carico |
+| Schede host | Temp CPU, temp GPU, CPU/GPU %, memoria host, disco %, media di carico |
 | Tabella container | Ordinabile per CPU/memoria/rete, anomalie con codice colore |
-| Grafici (4) | Tendenze CPU e memoria dei container, temperatura e carico dell'host |
+| Grafici (5) | Tendenze CPU e memoria dei container, CPU/GPU % dell'host, temperatura e carico dell'host |
 | Disco Docker | Immagini, cache di build, volumi, layer RW dei container |
 | Storico avvisi | Ultime 24h con timestamp |
 

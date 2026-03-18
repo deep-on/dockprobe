@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/license-Apache_2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/python-3.12-green" alt="Python">
   <img src="https://img.shields.io/badge/docker-compose-blue" alt="Docker">
   <img src="https://img.shields.io/badge/dependencies-4_only-brightgreen" alt="Deps">
@@ -58,8 +58,8 @@ Das war's. Der interaktive Installer konfiguriert Authentifizierung, Telegram-Be
 |-----------|-----------------|
 | **Echtzeit-Dashboard** | Dunkles Web-UI, 10s Auto-Aktualisierung, sortierbare Tabellen, Chart.js-Diagramme |
 | **Container-Monitoring** | CPU %, Speicher %, Netzwerk-I/O, Block-I/O, Neustart-Zähler |
-| **Host-Monitoring** | CPU/GPU-Temperatur, Festplattennutzung, Lastdurchschnitt |
-| **Anomalieerkennung** | 6 Regeln — CPU-Spitze, Speicherüberlauf, Hochtemperatur, Festplatte voll, Neustart, Netzwerk-Spitze |
+| **Host-Monitoring** | CPU/GPU-Temperatur & -Auslastung, Arbeitsspeicher, Festplattennutzung, Lastdurchschnitt |
+| **Anomalieerkennung** | 6 Regeln mit empfohlenen Maßnahmen — CPU-Spitze, Speicherüberlauf, Hochtemperatur, Festplatte voll, Neustart, Netzwerk-Spitze |
 | **Telegram-Benachrichtigungen** | Sofortige Benachrichtigung mit 30-Min-Cooldown pro Alarmtyp |
 | **Sicherheit** | Basic Auth, Ratenlimitierung (5 Fehlversuche = 60s Sperre), HTTPS |
 | **Sicherheitsscanner** | 16 automatisierte Prüfungen (Container/Host/Netzwerk), 5-Min-Scan-Zyklus, Schweregrad-Badges |
@@ -76,9 +76,9 @@ Das war's. Der interaktive Installer konfiguriert Authentifizierung, Telegram-Be
 | Bereich | Details |
 |---------|---------|
 | Sitzungsleiste | Angemeldeter Benutzer, IP, aktive Verbindungen / Max-Limit |
-| Host-Karten | CPU-Temp, GPU-Temp, Festplatte %, Lastdurchschnitt |
+| Host-Karten | CPU-Temp, GPU-Temp, CPU/GPU %, Host-Speicher, Festplatte %, Lastdurchschnitt |
 | Container-Tabelle | Sortierbar nach CPU/Speicher/Netzwerk, farbcodierte Anomalien |
-| Diagramme (4) | Container-CPU- & Speicher-Trends, Host-Temperatur & Last |
+| Diagramme (5) | Container-CPU- & Speicher-Trends, Host-CPU/GPU %, Host-Temperatur & Last |
 | Docker-Festplatte | Images, Build-Cache, Volumes, Container-RW-Schichten |
 | Alarm-Verlauf | Letzte 24h mit Zeitstempeln |
 

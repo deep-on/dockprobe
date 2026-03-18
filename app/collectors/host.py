@@ -11,6 +11,7 @@ def collect_host_stats() -> dict[str, Any]:
     return {
         "cpu_temp": _cpu_temp(),
         "gpu_temp": _gpu_temp(),
+        "gpu_util": _gpu_util(),
         "disk": _disk_usage(),
         "memory": _memory_usage(),
         "load_avg": _load_avg(),
@@ -78,14 +79,41 @@ def _cpu_temp() -> float | None:
 
 def _gpu_temp() -> float | None:
     """Read GPU temp via nvidia-smi."""
+    info = _nvidia_smi_info()
+    return info["temp"] if info else None
+
+
+def _gpu_util() -> float | None:
+    """Read GPU utilization % via nvidia-smi."""
+    info = _nvidia_smi_info()
+    return info["util"] if info else None
+
+
+_nvidia_cache: dict | None = None
+_nvidia_cache_ts: float = 0
+
+
+def _nvidia_smi_info() -> dict | None:
+    """Query nvidia-smi once per collection cycle (cached for 5s)."""
+    global _nvidia_cache, _nvidia_cache_ts
+    now = time.time()
+    if _nvidia_cache is not None and now - _nvidia_cache_ts < 5:
+        return _nvidia_cache
     try:
         out = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader,nounits"],
+            ["nvidia-smi",
+             "--query-gpu=temperature.gpu,utilization.gpu",
+             "--format=csv,noheader,nounits"],
             timeout=5, text=True,
         )
-        temps = [float(line.strip()) for line in out.strip().splitlines() if line.strip()]
-        return max(temps) if temps else None
-    except (FileNotFoundError, subprocess.SubprocessError, ValueError):
+        line = out.strip().splitlines()[0]
+        parts = [p.strip() for p in line.split(",")]
+        _nvidia_cache = {"temp": float(parts[0]), "util": float(parts[1])}
+        _nvidia_cache_ts = now
+        return _nvidia_cache
+    except (FileNotFoundError, subprocess.SubprocessError, ValueError, IndexError):
+        _nvidia_cache = None
+        _nvidia_cache_ts = now
         return None
 
 

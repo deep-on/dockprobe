@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/license-Apache_2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/python-3.12-green" alt="Python">
   <img src="https://img.shields.io/badge/docker-compose-blue" alt="Docker">
   <img src="https://img.shields.io/badge/dependencies-4_only-brightgreen" alt="Deps">
@@ -62,8 +62,8 @@ That's it. The interactive installer sets up authentication, Telegram alerts, an
 |----------|-------------|
 | **Real-time Dashboard** | Dark-themed web UI, 10s auto-refresh, sortable tables, Chart.js charts |
 | **Container Monitoring** | CPU %, memory %, network I/O, block I/O, restart count |
-| **Host Monitoring** | CPU/GPU temperature, disk usage, load average |
-| **Anomaly Detection** | 6 rules — CPU spike, memory overflow, high temp, disk full, restart, network spike |
+| **Host Monitoring** | CPU/GPU temperature & utilization, memory usage, disk usage, load average |
+| **Anomaly Detection** | 6 rules with recommended actions — CPU spike, memory overflow, high temp, disk full, restart, network spike |
 | **Telegram Alerts** | Instant notification with 30-min cooldown per alert type |
 | **Security** | Basic Auth, rate limiting (5 fails = 60s lockout), HTTPS |
 | **Security Scanner** | 16 automated checks (container/host/network), 5-min scan cycle, severity badges |
@@ -80,9 +80,9 @@ That's it. The interactive installer sets up authentication, Telegram alerts, an
 | Section | Details |
 |---------|---------|
 | Session Bar | Logged-in user, IP, active connections / max limit |
-| Host Cards | CPU temp, GPU temp, disk %, load average |
+| Host Cards | CPU temp, GPU temp, CPU/GPU %, host memory, disk %, load average |
 | Container Table | Sortable by CPU/memory/network, color-coded anomalies |
-| Charts (4) | Container CPU & memory trends, host temperature & load |
+| Charts (5) | Container CPU & memory trends, host CPU/GPU %, host temperature & load |
 | Docker Disk | Images, build cache, volumes, container RW layers |
 | Alert History | Last 24h with timestamps |
 

@@ -211,7 +211,7 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
       <span style="opacity:.6">— Ctrl + Scroll on any chart to zoom</span>
     </div>
     <div class="chart-box"><h3>Container CPU %</h3><canvas id="chartCpu"></canvas></div>
-    <div class="chart-box"><h3>Host CPU % <span style="font-size:11px;color:var(--text2);font-weight:400">— system-wide (usr+sys)</span></h3><canvas id="chartHostCpu"></canvas></div>
+    <div class="chart-box"><h3>Host CPU / GPU % <span style="font-size:11px;color:var(--text2);font-weight:400">— utilization</span></h3><canvas id="chartHostCpu"></canvas></div>
     <div class="chart-box"><h3>Container Memory %</h3><canvas id="chartMem"></canvas></div>
     <div class="chart-box"><h3>Host Temperature</h3><canvas id="chartTemp"></canvas></div>
     <div class="chart-box"><h3>Host Load Average <span style="font-size:11px;color:var(--text2);font-weight:400">— CPU 대기 프로세스 수 (1min / 5min / 15min)</span></h3><canvas id="chartLoad"></canvas></div>
@@ -343,7 +343,14 @@ function renderAnomalies(anomalies) {
   const list = document.getElementById('alertList');
   if (!anomalies || !anomalies.length) { banner.classList.remove('active'); return; }
   banner.classList.add('active');
-  list.innerHTML = anomalies.map(a => `<li>• ${a.msg}</li>`).join('');
+  list.innerHTML = anomalies.map(a => {
+    let html = `<li><span style="color:var(--text2);font-size:12px">[${a.ts ? fmtDateTime(a.ts) : ''}]</span> ${a.msg}`;
+    if (a.rec) {
+      const cmds = a.rec.split(' | ').map(c => /^[a-z]/.test(c) ? `<code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;font-size:11px">${c}</code>` : `<span>${c}</span>`).join(' &nbsp; ');
+      html += `<div style="margin:2px 0 4px 0;font-size:11px;color:var(--text2)">&#128161; ${cmds}</div>`;
+    }
+    return html + '</li>';
+  }).join('');
 }
 
 // ── Security section ──
@@ -402,14 +409,16 @@ function renderDockerMem(containers, host) {
   const hostTotal = (host && host.memory) ? host.memory.total : 0;
   const hostPct = hostTotal > 0 ? (totalUsed / hostTotal * 100).toFixed(1) : 'N/A';
   const hostColor = hostPct > 80 ? 'var(--red)' : hostPct > 50 ? 'var(--yellow)' : 'var(--green)';
-  const noLimit = running.filter(c => !c.mem_limit || c.mem_limit > 100 * 1024 * 1024 * 1024).length;
+  const noLimitList = running.filter(c => !c.mem_limit || c.mem_limit > 100 * 1024 * 1024 * 1024);
+  const noLimit = noLimitList.length;
+  const noLimitTooltip = noLimitList.map(c => c.name + ' (' + fmt(c.mem_usage) + ')').join('&#10;');
   el.innerHTML = `
     <div class="disk-item"><div class="size">${fmt(totalUsed)}</div><div class="dlabel">Total (${running.length} containers)</div></div>
     <div class="disk-item"><div class="size">${fmt(totalActive)}</div><div class="dlabel">Active (excl. cache)</div></div>
     <div class="disk-item"><div class="size">${fmt(totalCache)}</div><div class="dlabel">Cache</div></div>
     <div class="disk-item"><div class="size">${fmt(totalSwap)}</div><div class="dlabel">Swap</div></div>
     <div class="disk-item"><div class="size" style="color:${hostColor}">${hostPct}%</div><div class="dlabel">of Host RAM (${hostTotal ? fmt(hostTotal) : 'N/A'})</div></div>
-    <div class="disk-item"><div class="size" style="color:${noLimit > 0 ? 'var(--yellow)' : 'var(--green)'}">${noLimit}</div><div class="dlabel">No Memory Limit</div></div>
+    <div class="disk-item" title="${noLimitTooltip}" style="cursor:help"><div class="size" style="color:${noLimit > 0 ? 'var(--yellow)' : 'var(--green)'}">${noLimit}</div><div class="dlabel">No Memory Limit</div></div>
   `;
 }
 
@@ -616,7 +625,7 @@ const MAX_BUFFER = 360;
 let _visiblePoints = 60;  // default visible window (10 min at 10s)
 const MIN_VISIBLE = 10;
 const MAX_VISIBLE = MAX_BUFFER;
-let chartData = { cpu: {}, mem: {}, temp: { cpu: [], gpu: [] }, load: { l1: [], l5: [], l15: [] }, hostCpu: [], labels: [] };
+let chartData = { cpu: {}, mem: {}, temp: { cpu: [], gpu: [] }, load: { l1: [], l5: [], l15: [] }, hostCpu: [], hostGpu: [], labels: [] };
 
 function _sliceTail(arr, n) { return arr.length <= n ? [...arr] : arr.slice(-n); }
 
@@ -662,12 +671,13 @@ function updateCharts(containers, host) {
     chartData.temp.cpu.push(host.cpu_temp);
     chartData.temp.gpu.push(host.gpu_temp);
     chartData.hostCpu.push(host.cpu_pct != null ? host.cpu_pct : null);
+    chartData.hostGpu.push(host.gpu_util != null ? host.gpu_util : null);
     const load = host.load_avg || [0,0,0];
     chartData.load.l1.push(load[0]);
     chartData.load.l5.push(load[1]);
     chartData.load.l15.push(load[2]);
     if (chartData.temp.cpu.length > MAX_BUFFER) {
-      chartData.temp.cpu.shift(); chartData.temp.gpu.shift(); chartData.hostCpu.shift();
+      chartData.temp.cpu.shift(); chartData.temp.gpu.shift(); chartData.hostCpu.shift(); chartData.hostGpu.shift();
       chartData.load.l1.shift(); chartData.load.l5.shift(); chartData.load.l15.shift();
     }
   }
@@ -690,10 +700,11 @@ function renderChartView() {
   charts.cpu.update('none');
   if (_activeChart === charts.cpu) _startAnim();
 
-  // Host CPU chart
+  // Host CPU + GPU chart
   charts.hostCpu.data.labels = labels;
   charts.hostCpu.data.datasets = [
-    { label: 'Host CPU', data: _sliceTail(chartData.hostCpu, vp), borderColor: '#58a6ff', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true }
+    { label: 'Host CPU', data: _sliceTail(chartData.hostCpu, vp), borderColor: '#58a6ff', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
+    { label: 'Host GPU', data: _sliceTail(chartData.hostGpu, vp), borderColor: '#3fb950', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true }
   ];
   charts.hostCpu.update('none');
 
