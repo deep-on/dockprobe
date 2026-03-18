@@ -26,7 +26,11 @@
 
 DockProbe는 단일 컨테이너로 실행되는 셀프호스팅 Docker 모니터링 대시보드입니다. 모든 컨테이너와 호스트 머신의 CPU, 메모리, 네트워크, 디스크 메트릭을 실시간으로 수집하여 깔끔한 다크 테마 웹 UI에 표시합니다.
 
-문제가 발생하면 DockProbe가 자동으로 감지합니다. 6가지 이상 탐지 규칙이 CPU 폭주, 메모리 초과, 온도 경고, 디스크 부족, 예기치 않은 재시작, 네트워크 급증을 감시합니다. 알림은 텔레그램으로 즉시 전송되어 사용자가 알아차리기 전에 대응할 수 있습니다. 또한 내장 보안 스캐너가 5분마다 16가지 자동 점검을 수행하여 컨테이너 설정 오류, 네트워크 노출, 호스트 보안 강화 상태를 확인합니다.
+**GPU 인식 호스트 모니터링**은 CPU 사용률, 호스트 메모리, 디스크 부족, 로드 평균과 함께 NVIDIA GPU 온도와 사용률을 실시간 차트로 추적합니다. ML 워크로드나 GPU 집약적 컨테이너를 운영한다면, DockProbe는 별도의 GPU 모니터링 도구 없이 완전한 가시성을 제공합니다.
+
+문제가 발생하면 DockProbe가 자동으로 감지합니다. 6가지 이상 탐지 규칙이 CPU 폭주, 메모리 초과, 온도 경고, 디스크 부족, 예기치 않은 재시작, 네트워크 급증을 감시합니다. 각 알림에는 **바로 실행 가능한 명령어가 포함된 권장 조치**가 제공되어, 무엇이 잘못되었는지뿐만 아니라 정확히 어떻게 대응해야 하는지 알 수 있습니다. 알림은 텔레그램으로 즉시 전송되어 사용자가 알아차리기 전에 대응할 수 있습니다.
+
+내장 보안 스캐너가 5분마다 16가지 자동 점검을 수행하여 컨테이너 설정 오류, 네트워크 노출, 호스트 보안 강화 상태를 확인합니다.
 
 컨테이너마다 에이전트를 설치할 필요 없고, 외부 데이터베이스도 없고, 복잡한 설정도 없습니다. Docker 소켓을 마운트하고 명령어 하나만 실행하면 `https://localhost:9090`에서 Docker 환경 전체를 한눈에 볼 수 있습니다. 외부에서 접속하고 싶다면? Cloudflare Tunnel을 기본 지원하여 포트포워딩 없이 안전한 HTTPS 접속이 가능합니다.
 
@@ -97,6 +101,17 @@ git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash insta
 
 모든 임계값은 환경변수로 조정 가능합니다.
 
+각 이상 탐지에는 구체적인 명령어가 포함된 **실행 가능한 권장 조치**가 제공됩니다:
+
+| 이상 유형 | 권장 조치 예시 |
+|---------|-------------|
+| CPU 폭주 | `docker stats <name>` · `docker restart <name>` · `docker update --cpus=2 <name>` |
+| 메모리 초과 | `docker stats <name>` · `docker update --memory=2g <name>` |
+| 재시작 반복 | `docker logs --tail 50 <name>` · `docker inspect <name>` |
+| 네트워크 급증 | `docker logs --tail 50 <name>` · DDoS 또는 예기치 않은 트래픽 확인 |
+| 고온 | 팬/냉각 시스템 점검 · `sensors -u`로 상세 확인 |
+| 디스크 부족 | `docker system prune -f` · `docker builder prune -f` · `docker volume prune` |
+
 ---
 
 ## 보안 스캐너
@@ -122,26 +137,28 @@ DockProbe는 5분마다 16가지 보안 점검을 자동 실행하고, 심각도
 ## 아키텍처
 
 ```
-┌─────────────────────────────────────────┐
-│  DockProbe Container                    │
-│                                         │
-│  FastAPI + uvicorn (port 9090)          │
-│  ├── collectors/                        │
-│  │   ├── containers.py  (aiodocker)     │
-│  │   ├── host.py        (/proc, /sys)   │
-│  │   └── images.py      (system df)     │
-│  ├── alerting/                          │
-│  │   ├── detector.py    (상태 머신)      │
-│  │   └── telegram.py    (httpx)         │
-│  ├── storage/                           │
-│  │   └── db.py          (SQLite WAL)    │
-│  └── static/                            │
-│      └── index.html     (Chart.js)      │
-│                                         │
-│  마운트 볼륨:                             │
-│    docker.sock (ro), /sys (ro),         │
-│    /proc (ro), SQLite named volume      │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│  DockProbe Container                         │
+│                                              │
+│  FastAPI + uvicorn (port 9090)               │
+│  ├── collectors/                             │
+│  │   ├── containers.py  (aiodocker)          │
+│  │   ├── host.py        (/proc, /sys, GPU)   │
+│  │   └── images.py      (system df)          │
+│  ├── alerting/                               │
+│  │   ├── detector.py    (6 규칙 + 조치)      │
+│  │   └── telegram.py    (httpx)              │
+│  ├── security/                               │
+│  │   └── scanner.py     (16 checks)          │
+│  ├── storage/                                │
+│  │   └── db.py          (SQLite WAL)         │
+│  └── static/                                 │
+│      └── index.html     (Chart.js)           │
+│                                              │
+│  마운트 볼륨:                                 │
+│    docker.sock (ro), /sys (ro), /proc (ro),  │
+│    nvidia-smi (ro), SQLite named volume      │
+└──────────────────────────────────────────────┘
 ```
 
 **의존성 (4개만):**

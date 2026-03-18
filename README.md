@@ -30,7 +30,11 @@
 
 DockProbe is a self-hosted Docker monitoring dashboard that runs as a single container. It collects real-time CPU, memory, network, and disk metrics from all your containers and the host machine — then displays everything in a clean, dark-themed web UI.
 
-When something goes wrong, DockProbe detects it automatically. Six built-in anomaly detection rules watch for CPU spikes, memory overflows, temperature warnings, disk pressure, unexpected restarts, and network surges. Alerts are sent instantly to Telegram so you can respond before users notice. A built-in security scanner also runs 16 automated checks every 5 minutes — covering container misconfigurations, network exposure, and host-level hardening — so you can spot vulnerabilities before they become incidents.
+**GPU-aware host monitoring** tracks NVIDIA GPU temperature and utilization alongside CPU usage, host memory, disk pressure, and load average — all in real-time charts. If you run ML workloads or GPU-intensive containers, DockProbe gives you full visibility without installing separate GPU monitoring tools.
+
+When something goes wrong, DockProbe detects it automatically. Six built-in anomaly detection rules watch for CPU spikes, memory overflows, temperature warnings, disk pressure, unexpected restarts, and network surges. Each alert includes **recommended actions with ready-to-run commands** — so you know exactly what to do, not just what went wrong. Alerts are sent instantly to Telegram so you can respond before users notice.
+
+A built-in security scanner runs 16 automated checks every 5 minutes — covering container misconfigurations, network exposure, and host-level hardening — so you can spot vulnerabilities before they become incidents.
 
 There's no agent to install on each container, no external database, no complex configuration. Just mount the Docker socket, run one command, and you have full visibility into your Docker environment at `https://localhost:9090`. Need access from outside your network? Built-in Cloudflare Tunnel support gives you secure public HTTPS with zero port-forwarding.
 
@@ -101,6 +105,17 @@ That's it. The interactive installer sets up authentication, Telegram alerts, an
 
 All thresholds are configurable via environment variables.
 
+Each anomaly includes **actionable recommendations** with specific commands:
+
+| Anomaly | Example Recommendation |
+|---------|----------------------|
+| CPU spike | `docker stats <name>` · `docker restart <name>` · `docker update --cpus=2 <name>` |
+| Memory overflow | `docker stats <name>` · `docker update --memory=2g <name>` |
+| Restart loop | `docker logs --tail 50 <name>` · `docker inspect <name>` |
+| Network spike | `docker logs --tail 50 <name>` · Check for DDoS or unexpected traffic |
+| High temperature | Check fan/cooling system · `sensors -u` for details |
+| Disk full | `docker system prune -f` · `docker builder prune -f` · `docker volume prune` |
+
 ---
 
 ## Security Scanner
@@ -128,26 +143,28 @@ DockProbe runs 16 automated security checks every 5 minutes and displays results
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│  DockProbe Container                    │
-│                                         │
-│  FastAPI + uvicorn (port 9090)          │
-│  ├── collectors/                        │
-│  │   ├── containers.py  (aiodocker)     │
-│  │   ├── host.py        (/proc, /sys)   │
-│  │   └── images.py      (system df)     │
-│  ├── alerting/                          │
-│  │   ├── detector.py    (state machine) │
-│  │   └── telegram.py    (httpx)         │
-│  ├── storage/                           │
-│  │   └── db.py          (SQLite WAL)    │
-│  └── static/                            │
-│      └── index.html     (Chart.js)      │
-│                                         │
-│  Volumes:                               │
-│    docker.sock (ro), /sys (ro),         │
-│    /proc (ro), SQLite named volume      │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│  DockProbe Container                         │
+│                                              │
+│  FastAPI + uvicorn (port 9090)               │
+│  ├── collectors/                             │
+│  │   ├── containers.py  (aiodocker)          │
+│  │   ├── host.py        (/proc, /sys, GPU)   │
+│  │   └── images.py      (system df)          │
+│  ├── alerting/                               │
+│  │   ├── detector.py    (6 rules + actions)  │
+│  │   └── telegram.py    (httpx)              │
+│  ├── security/                               │
+│  │   └── scanner.py     (16 checks)          │
+│  ├── storage/                                │
+│  │   └── db.py          (SQLite WAL)         │
+│  └── static/                                 │
+│      └── index.html     (Chart.js)           │
+│                                              │
+│  Volumes:                                    │
+│    docker.sock (ro), /sys (ro), /proc (ro),  │
+│    nvidia-smi (ro), SQLite named volume      │
+└──────────────────────────────────────────────┘
 ```
 
 **Dependencies (4 packages only):**

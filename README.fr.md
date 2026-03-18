@@ -26,7 +26,11 @@
 
 DockProbe est un tableau de bord de surveillance Docker auto-hébergé qui s'exécute dans un seul conteneur. Il collecte en temps réel les métriques CPU, mémoire, réseau et disque de tous vos conteneurs et de la machine hôte — puis affiche tout dans une interface web épurée au thème sombre.
 
-Quand quelque chose ne va pas, DockProbe le détecte automatiquement. Six règles de détection d'anomalies intégrées surveillent les pics CPU, les débordements mémoire, les alertes de température, la pression disque, les redémarrages inattendus et les surcharges réseau. Les alertes sont envoyées instantanément sur Telegram pour que vous puissiez réagir avant que les utilisateurs ne s'en aperçoivent. De plus, un scanner de sécurité intégré exécute 16 vérifications automatisées toutes les 5 minutes — couvrant les erreurs de configuration des conteneurs, l'exposition réseau et le durcissement de l'hôte — pour repérer les vulnérabilités avant qu'elles ne deviennent des incidents.
+**La surveillance GPU de l'hôte** suit la température et l'utilisation des GPU NVIDIA en plus de l'utilisation CPU, de la mémoire hôte, de la pression disque et de la charge moyenne — le tout dans des graphiques en temps réel. Si vous exécutez des charges de travail ML ou des conteneurs intensifs en GPU, DockProbe vous offre une visibilité complète sans installer d'outils de surveillance GPU séparés.
+
+Quand quelque chose ne va pas, DockProbe le détecte automatiquement. Six règles de détection d'anomalies intégrées surveillent les pics CPU, les débordements mémoire, les alertes de température, la pression disque, les redémarrages inattendus et les surcharges réseau. Chaque alerte inclut des **actions recommandées avec des commandes prêtes à l'emploi** — pour savoir exactement quoi faire, pas seulement ce qui s'est mal passé. Les alertes sont envoyées instantanément sur Telegram pour que vous puissiez réagir avant que les utilisateurs ne s'en aperçoivent.
+
+Un scanner de sécurité intégré exécute 16 vérifications automatisées toutes les 5 minutes — couvrant les erreurs de configuration des conteneurs, l'exposition réseau et le durcissement de l'hôte — pour repérer les vulnérabilités avant qu'elles ne deviennent des incidents.
 
 Pas d'agent à installer sur chaque conteneur, pas de base de données externe, pas de configuration complexe. Montez simplement le socket Docker, exécutez une commande, et vous avez une visibilité complète sur votre environnement Docker à `https://localhost:9090`. Besoin d'un accès depuis l'extérieur ? Le support intégré de Cloudflare Tunnel offre un HTTPS public sécurisé sans redirection de ports.
 
@@ -97,6 +101,17 @@ C'est tout. L'installateur interactif configure l'authentification, les alertes 
 
 Tous les seuils sont configurables via les variables d'environnement.
 
+Chaque anomalie inclut des **recommandations exploitables** avec des commandes spécifiques :
+
+| Anomalie | Exemple de recommandation |
+|----------|--------------------------|
+| Pic CPU | `docker stats <name>` · `docker restart <name>` · `docker update --cpus=2 <name>` |
+| Débordement mémoire | `docker stats <name>` · `docker update --memory=2g <name>` |
+| Boucle de redémarrage | `docker logs --tail 50 <name>` · `docker inspect <name>` |
+| Pic réseau | `docker logs --tail 50 <name>` · Vérifier DDoS ou trafic inattendu |
+| Haute température | Vérifier ventilateur/système de refroidissement · `sensors -u` pour les détails |
+| Disque plein | `docker system prune -f` · `docker builder prune -f` · `docker volume prune` |
+
 ---
 
 ## Scanner de sécurité
@@ -122,26 +137,28 @@ DockProbe exécute 16 vérifications de sécurité automatisées toutes les 5 mi
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│  DockProbe Container                    │
-│                                         │
-│  FastAPI + uvicorn (port 9090)          │
-│  ├── collectors/                        │
-│  │   ├── containers.py  (aiodocker)     │
-│  │   ├── host.py        (/proc, /sys)   │
-│  │   └── images.py      (system df)     │
-│  ├── alerting/                          │
-│  │   ├── detector.py    (machine à états) │
-│  │   └── telegram.py    (httpx)         │
-│  ├── storage/                           │
-│  │   └── db.py          (SQLite WAL)    │
-│  └── static/                            │
-│      └── index.html     (Chart.js)      │
-│                                         │
-│  Volumes montés :                       │
-│    docker.sock (ro), /sys (ro),         │
-│    /proc (ro), SQLite named volume      │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│  DockProbe Container                         │
+│                                              │
+│  FastAPI + uvicorn (port 9090)               │
+│  ├── collectors/                             │
+│  │   ├── containers.py  (aiodocker)          │
+│  │   ├── host.py        (/proc, /sys, GPU)   │
+│  │   └── images.py      (system df)          │
+│  ├── alerting/                               │
+│  │   ├── detector.py    (6 règles + actions) │
+│  │   └── telegram.py    (httpx)              │
+│  ├── security/                               │
+│  │   └── scanner.py     (16 checks)          │
+│  ├── storage/                                │
+│  │   └── db.py          (SQLite WAL)         │
+│  └── static/                                 │
+│      └── index.html     (Chart.js)           │
+│                                              │
+│  Volumes montés :                            │
+│    docker.sock (ro), /sys (ro), /proc (ro),  │
+│    nvidia-smi (ro), SQLite named volume      │
+└──────────────────────────────────────────────┘
 ```
 
 **Dépendances (4 paquets uniquement) :**
