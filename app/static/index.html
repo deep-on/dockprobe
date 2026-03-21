@@ -852,12 +852,12 @@ async function submitPwChange() {
 
   if (!newPw) { msg.className = 'msg error'; msg.textContent = 'New password is required.'; return; }
   if (newPw !== confirmPw) { msg.className = 'msg error'; msg.textContent = 'Passwords do not match.'; return; }
-  if (newPw.length < 4) { msg.className = 'msg error'; msg.textContent = 'Password must be at least 4 characters.'; return; }
+  if (newPw.length < 8) { msg.className = 'msg error'; msg.textContent = 'Password must be at least 8 characters.'; return; }
 
   try {
     const resp = await fetch('/api/change-password', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'DockProbe' },
       body: JSON.stringify({ current_password: curPw, new_username: newUser, new_password: newPw })
     });
     const data = await resp.json();
@@ -907,7 +907,7 @@ async function submitSettings() {
   try {
     const resp = await fetch('/api/settings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'DockProbe' },
       body: JSON.stringify({ max_connections: maxConn, refresh_interval: refreshInterval })
     });
     const data = await resp.json();

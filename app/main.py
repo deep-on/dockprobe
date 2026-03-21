@@ -15,6 +15,7 @@ import secrets
 from collections import defaultdict
 
 from fastapi import FastAPI, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from app import config
@@ -129,6 +130,13 @@ VERSION = (Path(__file__).resolve().parent.parent / "VERSION").read_text().strip
 app = FastAPI(
     title="DockProbe", version=VERSION, lifespan=lifespan,
     docs_url=None, redoc_url=None, openapi_url=None,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[],  # no cross-origin access
+    allow_methods=["GET", "POST"],
+    allow_headers=[],
 )
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -311,6 +319,10 @@ async def auth_middleware(request: Request, call_next):
     resp = _check_auth(request)
     if resp is not None:
         return resp
+    # CSRF protection: POST requests must include X-Requested-With header
+    if request.method == "POST":
+        if not request.headers.get("X-Requested-With"):
+            return JSONResponse({"ok": False, "error": "Missing X-Requested-With header"}, status_code=403)
     # Connection limit check (after auth passes)
     ip = _get_client_ip(request)
     if not _is_connection_allowed(ip):

@@ -117,9 +117,9 @@ if [ "$ACCESS_MODE" = "1" ]; then
   if [ ! -f certs/cert.pem ]; then
     echo "  Generating SSL certificate..."
     mkdir -p certs
-    openssl req -x509 -newkey rsa:2048 -nodes \
+    openssl req -x509 -newkey rsa:4096 -nodes \
       -keyout certs/key.pem -out certs/cert.pem \
-      -days 365 -subj "/CN=docker-monitor" \
+      -days 825 -subj "/CN=docker-monitor" \
       -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" 2>/dev/null
   fi
 fi
