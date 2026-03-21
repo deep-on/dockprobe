@@ -10,6 +10,7 @@ from typing import Any
 import base64
 import hashlib
 import json
+import os
 import secrets
 from collections import defaultdict
 
@@ -125,7 +126,10 @@ async def lifespan(app: FastAPI):
 
 VERSION = (Path(__file__).resolve().parent.parent / "VERSION").read_text().strip()
 
-app = FastAPI(title="DockProbe", version=VERSION, lifespan=lifespan)
+app = FastAPI(
+    title="DockProbe", version=VERSION, lifespan=lifespan,
+    docs_url=None, redoc_url=None, openapi_url=None,
+)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -156,8 +160,21 @@ def _get_max_connections() -> int:
     return s.get("max_connections", config.MAX_CONNECTIONS)
 
 
-def _hash_pw(pw: str) -> str:
-    return hashlib.sha256(pw.encode()).hexdigest()
+def _hash_pw(pw: str, salt: str | None = None) -> str:
+    """Hash password with PBKDF2-SHA256 + random salt."""
+    if salt is None:
+        salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), iterations=600_000)
+    return f"{salt}${dk.hex()}"
+
+
+def _verify_pw(pw: str, stored: str) -> bool:
+    """Verify password against stored hash. Supports legacy SHA-256 and PBKDF2."""
+    if "$" in stored:
+        salt, _ = stored.split("$", 1)
+        return secrets.compare_digest(_hash_pw(pw, salt), stored)
+    # Legacy: unsalted SHA-256 (auto-migrated on next password change)
+    return secrets.compare_digest(hashlib.sha256(pw.encode()).hexdigest(), stored)
 
 
 def _load_auth() -> tuple[str, str]:
@@ -215,11 +232,17 @@ RATE_MAX_FAILS = 5
 RATE_WINDOW = 60
 
 
+TRUSTED_PROXIES = os.environ.get("TRUSTED_PROXIES", "").split(",")
+
+
 def _get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    """Get client IP. Only trust X-Forwarded-For from trusted proxy IPs."""
+    real_ip = request.client.host if request.client else "unknown"
+    if real_ip in TRUSTED_PROXIES:
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+    return real_ip
 
 
 def _is_rate_limited(ip: str) -> bool:
@@ -249,7 +272,7 @@ def _check_auth(request: Request) -> Response | None:
         try:
             decoded = base64.b64decode(auth[6:]).decode()
             user, pw = decoded.split(":", 1)
-            if secrets.compare_digest(user, auth_user) and secrets.compare_digest(_hash_pw(pw), auth_hash):
+            if secrets.compare_digest(user, auth_user) and _verify_pw(pw, auth_hash):
                 return None
         except Exception:
             pass
@@ -304,7 +327,9 @@ async def dashboard():
 
 @app.get("/static/{filename}")
 async def static_file(filename: str):
-    path = STATIC_DIR / filename
+    path = (STATIC_DIR / filename).resolve()
+    if not path.is_relative_to(STATIC_DIR.resolve()):
+        return Response(status_code=403)
     if path.exists() and path.is_file():
         return FileResponse(path)
     return Response(status_code=404)
@@ -352,12 +377,12 @@ async def api_change_password(request: Request):
     new_user = body.get("new_username", "").strip()
     new_pw = body.get("new_password", "")
 
-    if not new_pw or len(new_pw) < 4:
-        return JSONResponse({"ok": False, "error": "New password must be at least 4 characters"}, status_code=400)
+    if not new_pw or len(new_pw) < 8:
+        return JSONResponse({"ok": False, "error": "New password must be at least 8 characters"}, status_code=400)
 
     auth_user, auth_hash = _load_auth()
     if auth_user and auth_hash:
-        if not secrets.compare_digest(_hash_pw(current_pw), auth_hash):
+        if not _verify_pw(current_pw, auth_hash):
             return JSONResponse({"ok": False, "error": "Current password is incorrect"}, status_code=403)
 
     username = new_user if new_user else (auth_user or "admin")

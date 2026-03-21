@@ -5,3 +5,22 @@ __pycache__/
 certbot/
 *.db
 node_modules/
+
+# macOS resource forks
+._*
+.DS_Store
+
+# Original screenshots (contain personal info)
+docs/SCR-*.png
+docs/screenshots/_debug.png
+
+# Temp files
+docs/_screenshot_tmp.html
+
+# Meeting notes (internal)
+docs/meetings/
+
+# Media files
+docs/voiceover/
+docs/*.mp4
+docs/*.mp3
