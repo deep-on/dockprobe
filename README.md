@@ -264,12 +264,31 @@ bash install.sh   # choose option 2, paste tunnel token
 
 ## Security
 
+DockProbe is designed for safe self-hosting with multiple layers of protection:
+
+**Authentication & Access**
 - **Basic Auth** on all endpoints (except `/api/health`)
+- **PBKDF2-SHA256** password hashing with random salt (600k iterations)
 - **Rate limiting** — 5 failed login attempts → 60s lockout per IP
-- **HTTPS** — Self-signed or Cloudflare Tunnel
+- **Minimum 8-character** password requirement
 - **Connection limit** — Configurable max simultaneous users
+
+**Network & Transport**
+- **HTTPS** — Self-signed RSA-4096 (default) or Cloudflare Tunnel
+- **CORS** — Cross-origin requests explicitly blocked
+- **CSRF protection** — POST endpoints require `X-Requested-With` header
+- **HTTP fallback warning** — Cleartext mode warns on startup (tunnel-only)
+
+**Container Hardening**
+- **Non-root** — Container runs as `appuser`, not root
 - **Read-only mounts** — Docker socket, /sys, /proc all mounted read-only
+- **Path traversal protection** — Static file serving validates resolved paths
 - **No write access** — Monitoring-only, no container control
+- **No OpenAPI/Swagger** — API documentation endpoints disabled in production
+
+**Proxy-Aware Rate Limiting**
+- `X-Forwarded-For` is only trusted from IPs listed in `TRUSTED_PROXIES` env var
+- Direct connections always use the real client IP
 
 ---
 

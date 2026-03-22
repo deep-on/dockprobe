@@ -258,12 +258,31 @@ bash install.sh   # elegir opción 2, pegar token del túnel
 
 ## Seguridad
 
+DockProbe está diseñado para un auto-alojamiento seguro con múltiples capas de protección:
+
+**Autenticación y acceso**
 - **Basic Auth** en todos los endpoints (excepto `/api/health`)
-- **Limitación de tasa** — 5 intentos fallidos → 60s de bloqueo por IP
-- **HTTPS** — Autofirmado o Cloudflare Tunnel
+- **PBKDF2-SHA256** hash de contraseña con sal aleatoria (600k iteraciones)
+- **Limitación de tasa** — 5 intentos de inicio de sesión fallidos → 60s de bloqueo por IP
+- **Mínimo 8 caracteres** requeridos para la contraseña
 - **Límite de conexiones** — Máximo de usuarios simultáneos configurable
+
+**Red y transporte**
+- **HTTPS** — RSA-4096 autofirmado (por defecto) o Cloudflare Tunnel
+- **CORS** — Solicitudes de origen cruzado bloqueadas explícitamente
+- **Protección CSRF** — Los endpoints POST requieren el encabezado `X-Requested-With`
+- **Advertencia de respaldo HTTP** — El modo texto claro advierte al iniciar (solo túnel)
+
+**Endurecimiento del contenedor**
+- **No root** — El contenedor se ejecuta como `appuser`, no como root
 - **Montajes de solo lectura** — Docker socket, /sys, /proc todos montados en read-only
+- **Protección contra recorrido de rutas** — El servicio de archivos estáticos valida las rutas resueltas
 - **Sin acceso de escritura** — Solo monitoreo, sin control de contenedores
+- **Sin OpenAPI/Swagger** — Endpoints de documentación API desactivados en producción
+
+**Limitación de tasa con reconocimiento de proxy**
+- `X-Forwarded-For` solo se confía desde IPs listadas en la variable de entorno `TRUSTED_PROXIES`
+- Las conexiones directas siempre usan la IP real del cliente
 
 ---
 
