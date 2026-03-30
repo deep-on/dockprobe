@@ -1,6 +1,6 @@
 services:
   monitor:
-    image: deep-on/dockprobe:${DOCKPROBE_VERSION:-latest}
+    image: deeponinc/dockprobe:${DOCKPROBE_VERSION:-latest}
     build: .
     container_name: docker-monitor
     restart: unless-stopped

@@ -6,7 +6,7 @@
 
 services:
   monitor:
-    image: deep-on/dockprobe:latest
+    image: deeponinc/dockprobe:latest
     container_name: dockprobe
     restart: unless-stopped
     ports:
