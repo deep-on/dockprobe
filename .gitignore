@@ -6,6 +6,11 @@ certbot/
 *.db
 node_modules/
 
+# Claude Code
+CLAUDE.md
+.claude/
+.memory-mcp-guide.md
+
 # macOS resource forks
 ._*
 .DS_Store
