@@ -18,6 +18,8 @@
   <img src="https://img.shields.io/badge/python-3.12-green" alt="Python">
   <img src="https://img.shields.io/badge/docker-compose-blue" alt="Docker">
   <img src="https://img.shields.io/badge/dependencies-4_only-brightgreen" alt="Deps">
+  <img src="https://img.shields.io/docker/pulls/deeponinc/dockprobe" alt="Docker Pulls">
+  <img src="https://img.shields.io/docker/image-size/deeponinc/dockprobe/latest" alt="Image Size">
 </p>
 
 ---
@@ -45,6 +47,31 @@ git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash insta
 끝. 대화형 설치가 인증, 텔레그램 알림, HTTPS를 자동 설정합니다. `https://localhost:9090`에 접속하세요.
 
 > **필요 조건:** Docker (Compose v2), Git, OpenSSL
+
+---
+
+## Docker Hub에서 바로 실행
+
+git clone도 빌드도 필요 없습니다 — pull하고 바로 실행:
+
+```bash
+# 1. Compose 파일과 환경변수 템플릿 다운로드
+curl -fsSL https://raw.githubusercontent.com/deep-on/dockprobe/main/docker-compose.hub.yaml -o docker-compose.yaml
+curl -fsSL https://raw.githubusercontent.com/deep-on/dockprobe/main/.env.example -o .env
+
+# 2. .env 파일에 자격증명 입력
+vi .env
+
+# 3. (선택) 자체 서명 SSL 인증서 생성
+mkdir -p certs && openssl req -x509 -newkey rsa:4096 -nodes \
+  -keyout certs/key.pem -out certs/cert.pem \
+  -days 825 -subj "/CN=dockprobe"
+
+# 4. 실행
+docker compose up -d
+```
+
+> **Docker Hub에서 사용 가능:** [`deeponinc/dockprobe`](https://hub.docker.com/r/deeponinc/dockprobe) — Multi-arch (amd64 + arm64)
 
 ---
 

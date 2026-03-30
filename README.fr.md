@@ -18,6 +18,8 @@
   <img src="https://img.shields.io/badge/python-3.12-green" alt="Python">
   <img src="https://img.shields.io/badge/docker-compose-blue" alt="Docker">
   <img src="https://img.shields.io/badge/dependencies-4_only-brightgreen" alt="Deps">
+  <img src="https://img.shields.io/docker/pulls/deeponinc/dockprobe" alt="Docker Pulls">
+  <img src="https://img.shields.io/docker/image-size/deeponinc/dockprobe/latest" alt="Image Size">
 </p>
 
 ---
@@ -45,6 +47,31 @@ git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash insta
 C'est tout. L'installateur interactif configure l'authentification, les alertes Telegram et HTTPS — puis ouvre `https://localhost:9090`.
 
 > **Prérequis :** Docker (avec Compose v2), Git, OpenSSL
+
+---
+
+## Exécuter depuis Docker Hub
+
+Pas de git clone, pas de build — il suffit de pull et lancer :
+
+```bash
+# 1. Télécharger le fichier Compose et le modèle de variables d'environnement
+curl -fsSL https://raw.githubusercontent.com/deep-on/dockprobe/main/docker-compose.hub.yaml -o docker-compose.yaml
+curl -fsSL https://raw.githubusercontent.com/deep-on/dockprobe/main/.env.example -o .env
+
+# 2. Modifier .env avec vos identifiants
+vi .env
+
+# 3. (Optionnel) Générer un certificat SSL auto-signé
+mkdir -p certs && openssl req -x509 -newkey rsa:4096 -nodes \
+  -keyout certs/key.pem -out certs/cert.pem \
+  -days 825 -subj "/CN=dockprobe"
+
+# 4. Démarrer
+docker compose up -d
+```
+
+> **Disponible sur Docker Hub :** [`deeponinc/dockprobe`](https://hub.docker.com/r/deeponinc/dockprobe) — Multi-arch (amd64 + arm64)
 
 ---
 

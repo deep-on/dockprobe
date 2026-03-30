@@ -18,6 +18,8 @@
   <img src="https://img.shields.io/badge/python-3.12-green" alt="Python">
   <img src="https://img.shields.io/badge/docker-compose-blue" alt="Docker">
   <img src="https://img.shields.io/badge/dependencies-4_only-brightgreen" alt="Deps">
+  <img src="https://img.shields.io/docker/pulls/deeponinc/dockprobe" alt="Docker Pulls">
+  <img src="https://img.shields.io/docker/image-size/deeponinc/dockprobe/latest" alt="Image Size">
 </p>
 
 ---
@@ -45,6 +47,31 @@ git clone https://github.com/deep-on/dockprobe.git && cd dockprobe && bash insta
 以上です。対話型インストーラーが認証、Telegramアラート、HTTPSを自動設定し、`https://localhost:9090`を開きます。
 
 > **必要要件:** Docker (Compose v2)、Git、OpenSSL
+
+---
+
+## Docker Hubから直接実行
+
+git cloneもビルドも不要 — pullしてすぐ実行：
+
+```bash
+# 1. Composeファイルと環境変数テンプレートをダウンロード
+curl -fsSL https://raw.githubusercontent.com/deep-on/dockprobe/main/docker-compose.hub.yaml -o docker-compose.yaml
+curl -fsSL https://raw.githubusercontent.com/deep-on/dockprobe/main/.env.example -o .env
+
+# 2. .envファイルに認証情報を入力
+vi .env
+
+# 3. (任意) 自己署名SSL証明書を生成
+mkdir -p certs && openssl req -x509 -newkey rsa:4096 -nodes \
+  -keyout certs/key.pem -out certs/cert.pem \
+  -days 825 -subj "/CN=dockprobe"
+
+# 4. 起動
+docker compose up -d
+```
+
+> **Docker Hubで公開中:** [`deeponinc/dockprobe`](https://hub.docker.com/r/deeponinc/dockprobe) — Multi-arch (amd64 + arm64)
 
 ---
 
