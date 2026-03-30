@@ -1,0 +1,10 @@
+# GPU monitoring support (NVIDIA)
+# Usage: docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d
+services:
+  monitor:
+    volumes:
+      - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro
+      - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:ro
+    devices:
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia0:/dev/nvidia0

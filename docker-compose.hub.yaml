@@ -1,8 +1,13 @@
+# DockProbe — Docker Hub Quick Start
+# Usage:
+#   1. cp .env.example .env && vi .env
+#   2. docker compose -f docker-compose.hub.yaml up -d
+#   3. Open https://localhost:9090
+
 services:
   monitor:
-    image: deep-on/dockprobe:${DOCKPROBE_VERSION:-latest}
-    build: .
-    container_name: docker-monitor
+    image: deep-on/dockprobe:latest
+    container_name: dockprobe
     restart: unless-stopped
     ports:
       - "${MONITOR_PORT:-9090}:9090"
@@ -20,6 +25,7 @@ services:
       - AUTH_USER=${AUTH_USER}
       - AUTH_PASS=${AUTH_PASS}
       - MAX_CONNECTIONS=${MAX_CONNECTIONS:-3}
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,ssl; c=ssl._create_unverified_context(); urllib.request.urlopen('https://localhost:9090/api/health',context=c) if __import__('os').path.exists('/certs/cert.pem') else urllib.request.urlopen('http://localhost:9090/api/health')"]
       interval: 30s
@@ -28,7 +34,7 @@ services:
 
   tunnel:
     image: cloudflare/cloudflared:latest
-    container_name: docker-monitor-tunnel
+    container_name: dockprobe-tunnel
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     environment:
