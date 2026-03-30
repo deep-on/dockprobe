@@ -12,7 +12,6 @@ RUN chmod +x entrypoint.sh
 
 RUN adduser --disabled-password --no-create-home --gecos "" appuser \
     && mkdir -p /data && chown appuser:appuser /data
-USER appuser
 
 EXPOSE 9090
 
