@@ -9,6 +9,9 @@ if [ -S /var/run/docker.sock ]; then
   adduser appuser "$SOCK_GROUP" 2>/dev/null
 fi
 
+# Fix /data ownership (may be owned by root from previous runs)
+chown -R appuser:appuser /data 2>/dev/null
+
 # Start uvicorn as appuser
 CMD="uvicorn app.main:app --host 0.0.0.0 --port 9090"
 if [ -f /certs/cert.pem ] && [ -f /certs/key.pem ]; then
