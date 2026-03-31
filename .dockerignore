@@ -9,8 +9,8 @@ docs/
 certs/
 *.md
 !app/**/*.md
-LICENSE
-NOTICE
+!LICENSE
+!NOTICE
 install.sh
 docker-compose*.yaml
 SCR-*.png
