@@ -12,6 +12,14 @@ fi
 # Fix /data ownership (may be owned by root from previous runs)
 chown -R appuser:appuser /data 2>/dev/null
 
+# Startup banner
+VERSION=$(cat /app/VERSION 2>/dev/null || echo "unknown")
+echo ""
+echo "  DockProbe v${VERSION}"
+echo "  https://github.com/deep-on/dockprobe"
+echo "  If you find this useful, star us on GitHub!"
+echo ""
+
 # Start uvicorn as appuser
 CMD="uvicorn app.main:app --host 0.0.0.0 --port 9090"
 if [ -f /certs/cert.pem ] && [ -f /certs/key.pem ]; then
