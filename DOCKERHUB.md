@@ -5,7 +5,10 @@
 One container. One command. Full visibility.
 
 [![GitHub](https://img.shields.io/badge/GitHub-deep--on%2Fdockprobe-blue)](https://github.com/deep-on/dockprobe)
+[![GitHub Stars](https://img.shields.io/github/stars/deep-on/dockprobe?style=social)](https://github.com/deep-on/dockprobe)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue)](https://github.com/deep-on/dockprobe/blob/main/LICENSE)
+
+> **Like DockProbe?** Give us a [star on GitHub](https://github.com/deep-on/dockprobe) — it helps others discover the project!
 
 ---
 
