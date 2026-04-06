@@ -16,7 +16,7 @@ COPY VERSION .
 COPY LICENSE NOTICE ./
 COPY app/ ./app/
 COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh && chmod -R a+r app/
 
 RUN adduser --disabled-password --no-create-home --gecos "" appuser \
     && mkdir -p /data && chown appuser:appuser /data
