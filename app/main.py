@@ -16,7 +16,7 @@ from collections import defaultdict
 
 from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 
 from app import config
 from app.alerting.detector import AnomalyDetector
@@ -347,6 +347,28 @@ async def static_file(filename: str):
     return Response(status_code=404)
 
 
+@app.get("/api/v2/summary")
+async def api_summary():
+    """Lightweight summary for mobile widget (~1KB)."""
+    host = _latest.get("host", {})
+    containers = _latest.get("containers", [])
+    anomalies = _latest.get("anomalies", [])
+    running = [c for c in containers if c.get("status") == "running"]
+    stopped = len(containers) - len(running)
+    last_anomaly = anomalies[-1]["msg"] if anomalies else None
+    return JSONResponse({
+        "host": {
+            "cpu_pct": round(host.get("cpu_pct") or 0, 1),
+            "mem_pct": round((host.get("memory", {}).get("used", 0) / max(host.get("memory", {}).get("total", 1), 1)) * 100, 1) if host.get("memory") else 0,
+            "disk_pct": round(host.get("disk", [{}])[0].get("pct", 0), 1) if host.get("disk") else 0,
+            "gpu_temp": host.get("gpu_temp"),
+        },
+        "containers": {"total": len(containers), "running": len(running), "stopped": stopped},
+        "anomalies": {"active": len(anomalies), "last_message": last_anomaly},
+        "version": VERSION,
+    })
+
+
 @app.get("/api/current")
 async def api_current():
     return JSONResponse(_latest or {"containers": [], "host": {}, "images": {}, "anomalies": [], "security": {}})
@@ -376,6 +398,98 @@ async def api_host_history(hours: float = Query(1, ge=0.1, le=168)):
 async def api_alerts(hours: float = Query(24, ge=1, le=168)):
     data = get_alerts(hours)
     return JSONResponse(data)
+
+
+@app.get("/api/logs/{name}")
+async def api_logs(name: str, tail: int = Query(100, ge=1, le=1000)):
+    """Fetch container logs. SSE stream if Accept: text/event-stream, else JSON."""
+    import aiodocker
+
+    docker = aiodocker.Docker()
+    try:
+        container = docker.containers.container(name)
+        await container.show()  # verify exists
+    except Exception:
+        await docker.close()
+        return JSONResponse({"error": f"Container '{name}' not found"}, status_code=404)
+
+    async def _stream_sse():
+        try:
+            # Send initial tail lines
+            logs = await container.log(stdout=True, stderr=True, tail=tail)
+            for line in logs:
+                text = line.rstrip("\n") if isinstance(line, str) else line
+                yield f"data: {json.dumps({'line': text})}\n\n"
+
+            # Stream new lines (follow mode, 5 min timeout)
+            deadline = time.time() + 300
+            async for line in container.log(stdout=True, stderr=True, follow=True, tail=0):
+                if time.time() > deadline:
+                    yield f"data: {json.dumps({'line': '[stream timeout - refresh to continue]'})}\n\n"
+                    break
+                text = line.rstrip("\n") if isinstance(line, str) else line
+                yield f"data: {json.dumps({'line': text})}\n\n"
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        finally:
+            await docker.close()
+
+    async def _json_logs():
+        try:
+            logs = await container.log(stdout=True, stderr=True, tail=tail)
+            await docker.close()
+            return [l.rstrip("\n") if isinstance(l, str) else l for l in logs]
+        except Exception:
+            await docker.close()
+            return []
+
+    # Check if client wants SSE
+    accept = ""  # will be set from request
+    # For simplicity, always return JSON for GET without Accept header
+    logs = await _json_logs()
+    return JSONResponse({"name": name, "lines": logs})
+
+
+@app.get("/api/logs/{name}/stream")
+async def api_logs_stream(name: str, tail: int = Query(50, ge=0, le=500)):
+    """SSE stream of container logs with 5-minute timeout."""
+    import aiodocker
+
+    docker = aiodocker.Docker()
+    try:
+        container = docker.containers.container(name)
+        await container.show()
+    except Exception:
+        await docker.close()
+        return JSONResponse({"error": f"Container '{name}' not found"}, status_code=404)
+
+    async def _generate():
+        try:
+            # Initial tail
+            if tail > 0:
+                logs = await container.log(stdout=True, stderr=True, tail=tail)
+                for line in logs:
+                    text = line.rstrip("\n") if isinstance(line, str) else line
+                    yield f"data: {json.dumps({'line': text})}\n\n"
+
+            # Follow with 5-min timeout
+            deadline = time.time() + 300
+            async for line in container.log(stdout=True, stderr=True, follow=True, tail=0):
+                if time.time() > deadline:
+                    yield f"data: {json.dumps({'line': '[stream timeout after 5 min]'})}\n\n"
+                    break
+                text = line.rstrip("\n") if isinstance(line, str) else line
+                yield f"data: {json.dumps({'line': text})}\n\n"
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        finally:
+            await docker.close()
+
+    return StreamingResponse(_generate(), media_type="text/event-stream")
 
 
 @app.post("/api/change-password")

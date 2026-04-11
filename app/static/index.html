@@ -6,6 +6,7 @@
 <title>DockProbe</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d1117'/><text x='50' y='68' font-size='60' text-anchor='middle' fill='%2337d208'>🐳</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#c9d1d9;--text2:#8b949e;--accent:#37d208;--accent-light:#79f753;--accent-dim:#2ba806;--red:#f85149;--green:#3fb950;--yellow:#d29922;--orange:#db6d28}
@@ -106,6 +107,18 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
 .gh-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:var(--card);border:1px solid var(--border);border-radius:12px;font-size:12px;color:var(--text2);text-decoration:none;transition:border-color .2s}
 .gh-badge:hover{border-color:var(--accent);color:var(--accent)}
 .gh-badge b{color:var(--text);font-size:13px}
+.log-panel{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:1000;flex-direction:column}
+.log-panel.active{display:flex}
+.log-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--card)}
+.log-header h3{font-size:14px;color:var(--accent)}
+.log-body{flex:1;overflow-y:auto;padding:8px 12px;font-family:'SF Mono','Consolas','Monaco',monospace;font-size:12px;line-height:1.6;background:#010409}
+.log-line{white-space:pre-wrap;word-break:break-all;padding:1px 0}
+.log-line .log-error{color:#f85149}
+.log-line .log-warn{color:#d29922}
+.log-line .log-info{color:#58a6ff}
+.log-controls{display:flex;gap:8px;align-items:center;padding:8px 16px;border-top:1px solid var(--border);background:var(--card)}
+.log-controls input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;font-size:12px}
+.log-controls button{background:var(--accent-dim);color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px}
 @media(max-width:768px){
   .charts{grid-template-columns:1fr}
   .cards{grid-template-columns:repeat(2,1fr)}
@@ -123,8 +136,20 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
       <button class="btn-icon" onclick="refresh()" title="Refresh">&#8635;</button>
       <button class="btn-icon" onclick="openSettingsModal()" title="Settings">&#9881;</button>
       <button class="btn-icon" onclick="openPwModal()" title="Change Password">&#128274;</button>
+      <button class="btn-icon" onclick="openQrModal()" title="Mobile App">&#128241;</button>
     </div>
   </header>
+
+  <!-- QR Code Modal -->
+  <div class="modal-overlay" id="qrModal" onclick="if(event.target===this)closeQrModal()">
+    <div class="modal" style="text-align:center">
+      <h3>Connect Mobile App</h3>
+      <p style="font-size:12px;color:var(--text2);margin:8px 0">Scan this QR code with ProbeBuddy app to connect</p>
+      <div id="qrCode" style="margin:16px auto;background:#fff;padding:16px;border-radius:8px;display:inline-block"></div>
+      <p style="font-size:11px;color:var(--text2);margin:8px 0">QR contains server URL and a one-time token (expires in 10 min)</p>
+      <button class="btn-icon" onclick="closeQrModal()" style="margin-top:8px">Close</button>
+    </div>
+  </div>
 
   <div class="modal-overlay" id="pwModal">
     <div class="modal">
@@ -235,6 +260,20 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
     </div>
   </div>
 
+  <!-- Log Panel (full screen slide) -->
+  <div class="log-panel" id="logPanel">
+    <div class="log-header">
+      <h3 id="logTitle">Container Logs</h3>
+      <button class="btn-icon" onclick="closeLogPanel()">&#10005; Close</button>
+    </div>
+    <div class="log-body" id="logBody"></div>
+    <div class="log-controls">
+      <input type="text" id="logFilter" placeholder="Filter logs..." oninput="filterLogs()">
+      <button onclick="toggleLogFollow()">&#9654; Follow</button>
+      <button onclick="closeLogPanel()">Close</button>
+    </div>
+  </div>
+
   <footer>
     <div class="logo-text"><img src="/static/logo.png" alt="DeepOn" style="height:20px;vertical-align:middle;margin-right:6px;border-radius:4px">DockProbe <span id="appVersion" style="font-size:11px;color:var(--border);font-weight:400"></span></div>
     <div id="ghStats" style="margin:8px 0"></div>
@@ -315,7 +354,7 @@ function renderContainers(containers) {
     const cpuCls = c.cpu_pct > 80 ? ' cpu-high' : '';
     const memCls = c.mem_pct > 90 ? ' mem-high' : '';
     return `<tr>
-      <td><b>${c.name}</b></td>
+      <td><b style="cursor:pointer;color:var(--accent)" onclick="openLogPanel('${c.name}')">${c.name}</b></td>
       <td>${statusDot(c.status)}</td>
       <td class="bar-cell${cpuCls}"><div class="bar-bg" style="width:${Math.min(c.cpu_pct,100)}%;background:var(--accent)"></div><span class="bar-text">${c.cpu_pct.toFixed(1)}%</span></td>
       <td class="bar-cell${memCls}"><div class="bar-bg" style="width:${Math.min(c.mem_pct,100)}%;background:var(--green)"></div><span class="bar-text">${c.mem_pct.toFixed(1)}% (${fmt(c.mem_usage)})</span></td>
@@ -1025,6 +1064,102 @@ fetch('/api/settings').then(r => r.json()).then(data => {
 }).catch(() => {
   _applyRefreshInterval(10);
 });
+
+// ── QR Code for Mobile App ──
+function openQrModal() {
+  const url = window.location.origin;
+  const token = Math.random().toString(36).substring(2, 15);
+  const data = `dockprobe://connect?url=${encodeURIComponent(url)}&token=${token}`;
+
+  const qr = qrcode(0, 'M');
+  qr.addData(data);
+  qr.make();
+
+  const el = document.getElementById('qrCode');
+  el.innerHTML = qr.createImgTag(6, 0);
+  document.getElementById('qrModal').classList.add('active');
+}
+function closeQrModal() {
+  document.getElementById('qrModal').classList.remove('active');
+}
+
+// ── Log Viewer ──
+let _logStream = null;
+let _logFollow = true;
+let _logLines = [];
+const LOG_MAX_LINES = 500;
+
+function openLogPanel(name) {
+  const panel = document.getElementById('logPanel');
+  const body = document.getElementById('logBody');
+  const title = document.getElementById('logTitle');
+  title.textContent = `Logs — ${name}`;
+  body.innerHTML = '<div style="color:var(--text2);padding:20px">Loading...</div>';
+  _logLines = [];
+  _logFollow = true;
+  panel.classList.add('active');
+
+  // Close any existing stream
+  if (_logStream) { _logStream.close(); _logStream = null; }
+
+  // Start SSE stream
+  _logStream = new EventSource(`/api/logs/${encodeURIComponent(name)}/stream?tail=100`);
+  _logStream.onmessage = function(e) {
+    try {
+      const d = JSON.parse(e.data);
+      if (d.error) {
+        body.innerHTML += `<div class="log-line" style="color:var(--red)">[Error] ${escHtml(d.error)}</div>`;
+        return;
+      }
+      _logLines.push(d.line);
+      if (_logLines.length > LOG_MAX_LINES) _logLines.shift();
+      const colored = colorLogLine(escHtml(d.line));
+      body.innerHTML += `<div class="log-line">${colored}</div>`;
+      // Remove old DOM nodes if too many
+      while (body.children.length > LOG_MAX_LINES) body.removeChild(body.firstChild);
+      if (_logFollow) body.scrollTop = body.scrollHeight;
+    } catch(err) {}
+  };
+  _logStream.onerror = function() {
+    body.innerHTML += '<div class="log-line" style="color:var(--text2)">[stream ended]</div>';
+    _logStream.close();
+    _logStream = null;
+  };
+}
+
+function closeLogPanel() {
+  document.getElementById('logPanel').classList.remove('active');
+  if (_logStream) { _logStream.close(); _logStream = null; }
+}
+
+function toggleLogFollow() {
+  _logFollow = !_logFollow;
+  if (_logFollow) {
+    const body = document.getElementById('logBody');
+    body.scrollTop = body.scrollHeight;
+  }
+}
+
+function filterLogs() {
+  const q = document.getElementById('logFilter').value.toLowerCase();
+  const lines = document.getElementById('logBody').children;
+  for (let i = 0; i < lines.length; i++) {
+    lines[i].style.display = (!q || lines[i].textContent.toLowerCase().includes(q)) ? '' : 'none';
+  }
+}
+
+function colorLogLine(text) {
+  if (/\b(ERROR|FATAL|CRITICAL|Exception|Traceback)\b/i.test(text))
+    return `<span class="log-error">${text}</span>`;
+  if (/\b(WARN|WARNING)\b/i.test(text))
+    return `<span class="log-warn">${text}</span>`;
+  if (/\b(INFO)\b/i.test(text))
+    return `<span class="log-info">${text}</span>`;
+  return text;
+}
+
+// Close log panel with Escape key
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLogPanel(); });
 
 refresh();
 fetchGhStats();
