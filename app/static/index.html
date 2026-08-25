@@ -47,6 +47,10 @@ header h1 span{color:var(--accent)}
 .section h2{font-size:16px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
 th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap}
+/* With a fixed layout a cell no longer grows to fit its text — it lets the text
+   run out over the next column. A long container name landed on top of its own
+   CPU figure. Clip at the border and say so with an ellipsis. */
+#containerTable th,#containerTable td{overflow:hidden;text-overflow:ellipsis}
 th{background:#1c2129;color:var(--text2);font-weight:600;cursor:pointer;user-select:none;position:relative}
 .col-grip{position:absolute;top:0;right:-4px;width:9px;height:100%;cursor:col-resize;z-index:2}
 .col-grip::after{content:"";position:absolute;top:20%;left:4px;width:1px;height:60%;background:var(--border)}
@@ -361,7 +365,7 @@ function renderContainers(containers) {
     const cpuCls = c.cpu_pct > 80 ? ' cpu-high' : '';
     const memCls = c.mem_pct > 90 ? ' mem-high' : '';
     return `<tr>
-      <td><b style="cursor:pointer;color:var(--accent)" onclick="openLogPanel('${c.name}')">${c.name}</b></td>
+      <td title="${c.name}"><b style="cursor:pointer;color:var(--accent)" onclick="openLogPanel('${c.name}')">${c.name}</b></td>
       <td>${statusDot(c.status)}</td>
       <td class="bar-cell${cpuCls}"><div class="bar-bg" style="width:${Math.min(c.cpu_pct,100)}%;background:var(--accent)"></div><span class="bar-text">${c.cpu_pct.toFixed(1)}%</span></td>
       <td class="bar-cell${memCls}"><div class="bar-bg" style="width:${Math.min(c.mem_pct,100)}%;background:var(--green)"></div><span class="bar-text">${c.mem_pct.toFixed(1)}% (${fmt(c.mem_usage)})</span></td>
