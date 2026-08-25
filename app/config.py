@@ -11,7 +11,26 @@ RETENTION_DAYS: int = 7
 ALERT_COOLDOWN_MINUTES: int = 30
 
 # Anomaly thresholds
-CPU_THRESHOLD: float = float(os.getenv("CPU_THRESHOLD", "80.0"))
+
+
+def _default_cpu_threshold() -> float:
+    """80% of the machine — not 80% of one core.
+
+    Docker reports container CPU as a percentage where 100% is a single core, so
+    a fixed 80 means "four fifths of one core". On a 32-core host that is two and
+    a half percent of the machine: every ordinary worker sits above it forever,
+    the alert never clears, and the one that matters arrives in a stream of
+    hundreds that nobody reads any more.
+
+    Scaling with the core count keeps the number meaning the same thing
+    everywhere. Set CPU_THRESHOLD explicitly to override it.
+    """
+    return 80.0 * (os.cpu_count() or 1)
+
+
+# An empty value counts as unset: compose passes the variable through whether or
+# not anyone filled it in.
+CPU_THRESHOLD: float = float(os.getenv("CPU_THRESHOLD") or _default_cpu_threshold())
 CPU_CONSECUTIVE: int = 3
 MEM_THRESHOLD: float = float(os.getenv("MEM_THRESHOLD", "90.0"))
 HOST_TEMP_THRESHOLD: float = 85.0

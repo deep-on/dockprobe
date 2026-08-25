@@ -210,7 +210,7 @@ TELEGRAM_BOT_TOKEN=your-bot-token
 TELEGRAM_CHAT_ID=your-chat-id
 
 # Limites (opcional, valores padrão exibidos)
-CPU_THRESHOLD=80
+# CPU_THRESHOLD: sem definir, escala com a máquina (80 × núcleos; 100% = um núcleo)
 MEM_THRESHOLD=90
 
 # Limite de conexões (opcional, 0 = ilimitado)

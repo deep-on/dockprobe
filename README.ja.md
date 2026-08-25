@@ -210,7 +210,7 @@ TELEGRAM_BOT_TOKEN=your-bot-token
 TELEGRAM_CHAT_ID=your-chat-id
 
 # 閾値 (任意、デフォルト値表示)
-CPU_THRESHOLD=80
+# CPU_THRESHOLD: 未設定ならマシンに合わせて調整 (80 × コア数、100% = 1コア)
 MEM_THRESHOLD=90
 
 # 接続制限 (任意、0 = 無制限)

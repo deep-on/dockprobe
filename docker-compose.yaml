@@ -16,7 +16,8 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-      - CPU_THRESHOLD=${CPU_THRESHOLD:-80}
+      # Empty means "derive it from the core count" — see app/config.py
+      - CPU_THRESHOLD=${CPU_THRESHOLD:-}
       - AUTH_USER=${AUTH_USER}
       - AUTH_PASS=${AUTH_PASS}
       - MAX_CONNECTIONS=${MAX_CONNECTIONS:-3}

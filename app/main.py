@@ -284,10 +284,18 @@ def _check_auth(request: Request) -> Response | None:
                 return None
         except Exception:
             pass
+        # Credentials were offered and refused. That is a guess, and guesses count.
+        _record_fail(ip)
+        remaining = RATE_MAX_FAILS - len(_fail_log[ip])
+        logger.warning("Auth failed from %s (%d attempts left)", ip, max(remaining, 0))
 
-    _record_fail(ip)
-    remaining = RATE_MAX_FAILS - len(_fail_log[ip])
-    logger.warning("Auth failed from %s (%d attempts left)", ip, max(remaining, 0))
+    # A request with no Authorization header is not a guess — it is how HTTP
+    # Basic opens, and every client sends one before it is told a password is
+    # wanted. Counting those locked people out of their own dashboard: the page
+    # asks for five things at once on its first refresh, so a single cold open
+    # from a browser spent the whole allowance and blocked the address, and
+    # everything else behind that address with it.
+    #
     # Return HTML body so mobile browsers redirect properly after Basic Auth
     return Response(
         status_code=401,
