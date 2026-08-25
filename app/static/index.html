@@ -47,7 +47,13 @@ header h1 span{color:var(--accent)}
 .section h2{font-size:16px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
 table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
 th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap}
-th{background:#1c2129;color:var(--text2);font-weight:600;cursor:pointer;user-select:none}
+th{background:#1c2129;color:var(--text2);font-weight:600;cursor:pointer;user-select:none;position:relative}
+.col-grip{position:absolute;top:0;right:-4px;width:9px;height:100%;cursor:col-resize;z-index:2}
+.col-grip::after{content:"";position:absolute;top:20%;left:4px;width:1px;height:60%;background:var(--border)}
+.col-grip:hover::after,.col-grip.dragging::after{background:var(--accent);width:2px;left:3px}
+th:last-child .col-grip{right:0}
+th.fitted{animation:fitflash .5s ease-out}
+@keyframes fitflash{from{background:var(--accent-dim)}to{background:#1c2129}}
 th:hover{color:var(--accent)}
 th.sorted-asc::after{content:" ▲";color:var(--accent)}
 th.sorted-desc::after{content:" ▼";color:var(--accent)}
@@ -859,6 +865,121 @@ function _onTouchMove(e) {
 }
 
 // Table sorting
+// ── Column widths ─────────────────────────────────────────────────────────
+// The container table is the one part of this page that is read like a
+// spreadsheet, and a container name is as long as somebody's project. Borders
+// drag, widths are remembered per column, and a long press on a border sizes
+// that column to whatever is in it.
+(function () {
+  const table = document.getElementById('containerTable');
+  const headers = [...table.tHead.rows[0].cells];
+  const KEY = 'dockprobe.columnWidths';
+  let widths = {};
+  try { widths = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { widths = {}; }
+
+  function apply() {
+    // table-layout:fixed is what makes an explicit width mean anything. Without
+    // it the browser re-measures every cell on each refresh and quietly undoes
+    // whatever was dragged.
+    const anySet = headers.some(th => widths[th.dataset.col]);
+    table.style.tableLayout = anySet ? 'fixed' : '';
+    // The table has to be exactly as wide as its columns add up to. Left at
+    // 100% it stays inside the pane and quietly scales every column down to
+    // fit, so dragging a border 60px wider moved it 34 — the wrapper around
+    // this table already scrolls sideways, which is where the extra belongs.
+    const total = headers.reduce((sum, th) => sum + (widths[th.dataset.col] || 0), 0);
+    table.style.width = anySet ? total + 'px' : '100%';
+    table.style.minWidth = '';
+    headers.forEach(th => {
+      const w = widths[th.dataset.col];
+      th.style.width = w ? w + 'px' : '';
+    });
+  }
+
+  // The first drag pins every column where it already sits, so the other eight
+  // do not jump the moment the layout switches to fixed.
+  function freeze() {
+    if (headers.some(th => widths[th.dataset.col])) return;
+    headers.forEach(th => { widths[th.dataset.col] = Math.round(th.getBoundingClientRect().width); });
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(widths)); } catch (e) { /* private mode */ }
+  }
+
+  // Cells are nowrap, so scrollWidth is the width the text wants even while the
+  // column is clipping it — which is exactly what "fit the contents" means.
+  function contentWidth(index) {
+    let widest = headers[index].scrollWidth + 18;   // header carries the sort arrow
+    const body = table.tBodies[0];
+    if (body) for (const row of body.rows) {
+      const cell = row.cells[index];
+      if (cell) widest = Math.max(widest, cell.scrollWidth);
+    }
+    return Math.min(1200, Math.max(56, widest + 24));  // 12px padding each side
+  }
+
+  function autoFit(index) {
+    freeze();
+    widths[headers[index].dataset.col] = contentWidth(index);
+    apply(); save();
+    const th = headers[index];
+    th.classList.remove('fitted');
+    void th.offsetWidth;          // restart the flash even on a repeat press
+    th.classList.add('fitted');
+  }
+
+  headers.forEach((th, index) => {
+    const grip = document.createElement('div');
+    grip.className = 'col-grip';
+    grip.title = 'Drag to resize · hold or double-click to fit';
+    th.appendChild(grip);
+
+    let startX = 0, startWidth = 0, dragging = false, moved = false, holdTimer = null;
+
+    grip.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      e.stopPropagation();          // the header itself sorts; the border must not
+      dragging = true; moved = false;
+      startX = e.clientX;
+      startWidth = th.getBoundingClientRect().width;
+      grip.setPointerCapture(e.pointerId);
+      grip.classList.add('dragging');
+      holdTimer = setTimeout(() => { holdTimer = null; if (!moved) { autoFit(index); release(grip, e); } }, 500);
+    });
+
+    grip.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const delta = e.clientX - startX;
+      if (Math.abs(delta) > 3) {
+        moved = true;
+        if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      }
+      if (!moved) return;
+      freeze();
+      widths[th.dataset.col] = Math.min(1200, Math.max(56, Math.round(startWidth + delta)));
+      apply();
+    });
+
+    function release(target, e) {
+      if (!dragging) return;
+      dragging = false;
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      grip.classList.remove('dragging');
+      try { target.releasePointerCapture(e.pointerId); } catch (err) { /* already gone */ }
+      if (moved) save();
+    }
+
+    grip.addEventListener('pointerup', e => release(grip, e));
+    grip.addEventListener('pointercancel', e => release(grip, e));
+    // Double-click is what people try first; the long press is for touchpads.
+    grip.addEventListener('dblclick', e => { e.stopPropagation(); autoFit(index); });
+    grip.addEventListener('click', e => e.stopPropagation());
+  });
+
+  apply();
+})();
+
 document.querySelectorAll('#containerTable th').forEach(th => {
   th.addEventListener('click', () => {
     const col = th.dataset.col;
