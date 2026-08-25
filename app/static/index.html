@@ -50,7 +50,12 @@ th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);fon
 /* With a fixed layout a cell no longer grows to fit its text — it lets the text
    run out over the next column. A long container name landed on top of its own
    CPU figure. Clip at the border and say so with an ellipsis. */
-#containerTable th,#containerTable td{overflow:hidden;text-overflow:ellipsis}
+#containerTable td{overflow:hidden;text-overflow:ellipsis}
+/* The header clips too, but the grip lives 4px outside the cell so that it
+   straddles the border the way a person aims at it. `clip` with a margin cuts
+   the text and leaves the handle alone; where the margin is not understood the
+   handle is merely narrower, never gone. */
+#containerTable th{overflow:clip;overflow-clip-margin:6px;text-overflow:ellipsis}
 th{background:#1c2129;color:var(--text2);font-weight:600;cursor:pointer;user-select:none;position:relative}
 .col-grip{position:absolute;top:0;right:-4px;width:9px;height:100%;cursor:col-resize;z-index:2}
 .col-grip::after{content:"";position:absolute;top:20%;left:4px;width:1px;height:60%;background:var(--border)}
