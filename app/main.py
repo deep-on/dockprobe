@@ -362,6 +362,7 @@ async def api_summary():
             "mem_pct": round((host.get("memory", {}).get("used", 0) / max(host.get("memory", {}).get("total", 1), 1)) * 100, 1) if host.get("memory") else 0,
             "disk_pct": round(host.get("disk", [{}])[0].get("pct", 0), 1) if host.get("disk") else 0,
             "gpu_temp": host.get("gpu_temp"),
+            "gpu_util": host.get("gpu_util"),
         },
         "containers": {"total": len(containers), "running": len(running), "stopped": stopped},
         "anomalies": {"active": len(anomalies), "last_message": last_anomaly},
