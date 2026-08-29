@@ -33,7 +33,13 @@ def _default_cpu_threshold() -> float:
 CPU_THRESHOLD: float = float(os.getenv("CPU_THRESHOLD") or _default_cpu_threshold())
 CPU_CONSECUTIVE: int = 3
 MEM_THRESHOLD: float = float(os.getenv("MEM_THRESHOLD", "90.0"))
-HOST_TEMP_THRESHOLD: float = 85.0
+HOST_TEMP_THRESHOLD: float = float(os.getenv("HOST_TEMP_THRESHOLD") or 85.0)
+# Consumer NVIDIA cards begin thermal slowdown in the mid-eighties and are rated
+# to run there, so this is a "hotter than it should be" line rather than a
+# failure. Utilisation deliberately has no threshold: a GPU pinned at 100% is a
+# GPU doing its job, and alerting on it would be noise on every machine that
+# actually uses one.
+GPU_TEMP_THRESHOLD: float = float(os.getenv("GPU_TEMP_THRESHOLD") or 85.0)
 DISK_THRESHOLD: float = 90.0
 NET_SPIKE_MULTIPLIER: float = 10.0
 NET_SPIKE_MIN_BYTES: int = 100 * 1024 * 1024  # 100MB

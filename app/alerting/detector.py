@@ -91,6 +91,17 @@ class AnomalyDetector:
             alerts.append(a)
             self.active_anomalies.append(a)
 
+        # --- Host GPU Temperature ---
+        gpu_temp = host.get("gpu_temp")
+        if gpu_temp is not None and gpu_temp > config.GPU_TEMP_THRESHOLD:
+            a = {"type": "gpu_temp", "target": "gpu",
+                 "value": gpu_temp, "ts": now,
+                 "msg": f"GPU temperature {gpu_temp}°C (>{config.GPU_TEMP_THRESHOLD}°C)",
+                 "rec": "nvidia-smi -q -d TEMPERATURE for the full picture | Check case airflow and fan curve | "
+                        "nvidia-smi -pl to cap the board power"}
+            alerts.append(a)
+            self.active_anomalies.append(a)
+
         # --- Host Disk ---
         for d in host.get("disk", []):
             if d["pct"] > config.DISK_THRESHOLD:

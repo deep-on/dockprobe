@@ -218,6 +218,8 @@ TELEGRAM_CHAT_ID=your-chat-id
 # Thresholds (optional, shown with defaults)
 # CPU_THRESHOLD: unset scales with the machine (80 x cores; 100% = one core)
 MEM_THRESHOLD=90
+HOST_TEMP_THRESHOLD=85
+GPU_TEMP_THRESHOLD=85
 
 # Connection limit (optional, 0 = unlimited)
 MAX_CONNECTIONS=3
@@ -225,6 +227,35 @@ MAX_CONNECTIONS=3
 # Cloudflare Tunnel (optional)
 CF_TUNNEL_TOKEN=your-tunnel-token
 ```
+
+---
+
+## NVIDIA GPUs
+
+GPU temperature and utilisation are read by running `nvidia-smi` **inside the
+container**, which the image does not ship. On a machine with a card, a plain
+deployment therefore shows `GPU N/A` — the reading is missing, not zero.
+
+`docker-compose.gpu.yaml` supplies what is needed:
+
+```bash
+docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d
+```
+
+It bind-mounts the host's `nvidia-smi` and `libnvidia-ml.so.1` read-only and
+passes `/dev/nvidiactl` and `/dev/nvidia0`. Nothing is reserved, so other GPU
+workloads on the host are unaffected. To make it the default for a host, name
+both files in `.env` and drop the flags:
+
+```
+COMPOSE_FILE=docker-compose.yaml:docker-compose.gpu.yaml
+```
+
+Confirm it took with `docker exec dockprobe nvidia-smi`. If readings are still
+missing the log says so once, at startup.
+
+Temperature raises an alert above `GPU_TEMP_THRESHOLD`. Utilisation deliberately
+does not: a GPU pinned at 100% is a GPU doing its job.
 
 ---
 

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import time
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def collect_host_stats() -> dict[str, Any]:
@@ -91,6 +94,7 @@ def _gpu_util() -> float | None:
 
 _nvidia_cache: dict | None = None
 _nvidia_cache_ts: float = 0
+_nvidia_quiet: bool = False
 
 
 def _nvidia_smi_info() -> dict | None:
@@ -111,7 +115,17 @@ def _nvidia_smi_info() -> dict | None:
         _nvidia_cache = {"temp": float(parts[0]), "util": float(parts[1])}
         _nvidia_cache_ts = now
         return _nvidia_cache
-    except (FileNotFoundError, subprocess.SubprocessError, ValueError, IndexError):
+    except (FileNotFoundError, subprocess.SubprocessError, ValueError, IndexError) as why:
+        # Said once, not every five seconds. A machine with no GPU is the normal
+        # case and should not fill the log; a machine that has one and shows
+        # "GPU N/A" anyway is a container missing nvidia-smi, and without this
+        # line there is nothing anywhere to say so.
+        global _nvidia_quiet
+        if not _nvidia_quiet:
+            _nvidia_quiet = True
+            logger.info("no GPU readings: %s. On a host with an NVIDIA card this usually means the "
+                        "container has no nvidia-smi - deploy with docker-compose.gpu.yaml.",
+                        why.__class__.__name__)
         _nvidia_cache = None
         _nvidia_cache_ts = now
         return None
