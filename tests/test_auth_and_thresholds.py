@@ -6,9 +6,11 @@ Standard library only, so this runs anywhere the app runs:
 
 The auth tests need the app's runtime dependencies, which are in the image but
 not necessarily on a laptop; they skip themselves rather than fail when those are
-missing. Inside the container there is no excuse:
+missing. The image carries the dependencies but not this directory, so to run them
+against the published image, mount it in:
 
-    docker run --rm deeponinc/dockprobe:latest python -m unittest discover tests
+    docker run --rm --entrypoint python -v "$PWD/tests:/app/tests:ro" -w /app \
+        deeponinc/dockprobe:latest -m unittest discover tests
 """
 from __future__ import annotations
 
