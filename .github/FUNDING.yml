@@ -1,0 +1,12 @@
+# The Sponsor button on this repository.
+#
+# It points at the account that publishes DockProbe. Nothing appears until that
+# account is enrolled at github.com/sponsors — an unenrolled name here is
+# ignored rather than broken, which is why this can be committed first and the
+# links in the README and the dashboard added once the page is live.
+#
+# Deliberately GitHub Sponsors rather than a link to a payment page: the server
+# is the open-source half of this product and the half that does the work, so
+# the place to say thank you is the repository people install it from. GitHub
+# takes no cut, and there is no App Store agreement in the way.
+github: [deep-on]
