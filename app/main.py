@@ -369,6 +369,10 @@ async def api_summary():
             "cpu_pct": round(host.get("cpu_pct") or 0, 1),
             "mem_pct": round((host.get("memory", {}).get("used", 0) / max(host.get("memory", {}).get("total", 1), 1)) * 100, 1) if host.get("memory") else 0,
             "disk_pct": round(host.get("disk", [{}])[0].get("pct", 0), 1) if host.get("disk") else 0,
+            # The desktop apps put both temperatures under each server in their
+            # sidebar, and asking /api/current for one number is a hundred times
+            # the traffic of this whole reply.
+            "cpu_temp": host.get("cpu_temp"),
             "gpu_temp": host.get("gpu_temp"),
             "gpu_util": host.get("gpu_util"),
         },
