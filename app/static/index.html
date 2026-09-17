@@ -140,6 +140,18 @@ footer .logo-text{font-weight:600;font-size:13px;color:var(--text)}
   table{font-size:12px}
   th,td{padding:6px 8px}
 }
+/* Narrow enough to park in a corner of a screen, which is what the desktop
+   apps are for once the window is pinned over your work. Everything goes to one
+   column, the padding stops eating the width, and the charts lose height —
+   a 200px chart in a 300px window is the whole window. */
+@media(max-width:520px){
+  body{padding:10px}
+  .cards,.disk-grid{grid-template-columns:1fr}
+  .chart-box{padding:10px}
+  .chart-box canvas{height:130px!important}
+  h1,h2{font-size:15px}
+  .card .value{font-size:20px}
+}
 </style>
 </head>
 <body>
